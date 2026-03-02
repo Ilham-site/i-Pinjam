@@ -46,7 +46,8 @@
                     <p class="text-sm text-emerald-200">Tarikh Pinjam: <span id="currentDate" class="font-bold"></span></p>
                 </div>
                 <button onclick="prosesPinjam()" class="w-full btn-green py-3 rounded-lg font-bold mt-4 shadow-xl text-lg">Pinjam Sekarang</button>
-                const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx0y8CWMAVzKIkzXGaDyq0ccgS6FJXgqS7lMuKC1cLfrjiL-HQHe77Fl0tEqRjadHTG/exec";
+// GANTIKAN URL INI dengan URL dari Google Apps Script anda
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx0y8CWMAVzKIkzXGaDyq0ccgS6FJXgqS7lMuKC1cLfrjiL-HQHe77Fl0tEqRjadHTG/exec";
 
 function hantarKeGoogleSheets(data) {
     fetch(GOOGLE_SCRIPT_URL, {
@@ -382,3 +383,4 @@ function prosesPinjam() {
 </body>
 
 </html>
+
