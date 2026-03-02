@@ -46,6 +46,56 @@
                     <p class="text-sm text-emerald-200">Tarikh Pinjam: <span id="currentDate" class="font-bold"></span></p>
                 </div>
                 <button onclick="prosesPinjam()" class="w-full btn-green py-3 rounded-lg font-bold mt-4 shadow-xl text-lg">Pinjam Sekarang</button>
+                const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx0y8CWMAVzKIkzXGaDyq0ccgS6FJXgqS7lMuKC1cLfrjiL-HQHe77Fl0tEqRjadHTG/exec";
+
+function hantarKeGoogleSheets(data) {
+    fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Penting untuk mengelakkan ralat CORS
+        cache: 'no-cache',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(() => console.log("Data berjaya dihantar ke Cloud"))
+    .catch(err => console.log("Ralat Cloud: ", err));
+}
+
+function prosesPinjam() {
+    const nama = document.getElementById('p_nama').value;
+    const buku = document.getElementById('p_buku').value;
+    if(!nama || !buku) return Swal.fire('Ralat', 'Sila isi semua maklumat', 'error');
+
+    Swal.fire({
+        title: 'Perjanjian Pinjaman',
+        text: "Saya bersetuju untuk memulangkan buku ini dalam masa 7 hari.",
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Setuju'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const tarikhPinjam = new Date();
+            const dataBaru = {
+                id: Date.now(),
+                nama: nama,
+                buku: buku,
+                tglPinjamStr: new Date().toLocaleDateString('ms-MY'),
+                status: 'Dalam Pinjaman'
+            };
+
+            // 1. Simpan dalam LocalStorage (untuk kegunaan offline/laju)
+            rekod.push(dataBaru);
+            localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
+
+            // 2. Hantar ke Google Sheets (Online)
+            hantarKeGoogleSheets(dataBaru);
+
+            Swal.fire('Berjaya!', 'Rekod telah disimpan secara online & offline', 'success');
+            document.getElementById('p_nama').value = '';
+            document.getElementById('p_buku').value = '';
+        }
+    })
+}
             </div>
         </section>
 
@@ -330,4 +380,5 @@
         }
     </script>
 </body>
+
 </html>
