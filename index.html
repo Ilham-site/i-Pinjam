@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>i-Pustaka: Sistem Perpustakaan Digital</title>
+    <title>i-Pustaka: Sistem Perpustakaan Digital (Cloud Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -19,7 +19,7 @@
 
     <header class="text-center mb-10">
         <h1 class="text-4xl font-bold text-emerald-400 mb-2"><i class="fas fa-book-reader mr-3"></i>i-Pustaka</h1>
-        <p class="text-slate-400">Sistem Pinjaman & Pemulangan Buku Digital</p>
+        <p class="text-slate-400">Sistem Pinjaman Digital & Google Sheets Sync</p>
     </header>
 
     <div class="flex flex-wrap justify-center gap-4 mb-10">
@@ -43,60 +43,9 @@
                     <input type="text" id="p_buku" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 focus:outline-none focus:border-emerald-500" placeholder="Cari tajuk di menu Koleksi">
                 </div>
                 <div class="p-4 bg-emerald-900/20 border border-emerald-500/20 rounded-lg">
-                    <p class="text-sm text-emerald-200">Tarikh Pinjam: <span id="currentDate" class="font-bold"></span></p>
+                    <p class="text-sm text-emerald-200">Tarikh Pinjam: <span id="currentDateDisplay" class="font-bold"></span></p>
                 </div>
-                <button onclick="prosesPinjam()" class="w-full btn-green py-3 rounded-lg font-bold mt-4 shadow-xl text-lg">Pinjam Sekarang</button>
-// GANTIKAN URL INI dengan URL dari Google Apps Script anda
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx0y8CWMAVzKIkzXGaDyq0ccgS6FJXgqS7lMuKC1cLfrjiL-HQHe77Fl0tEqRjadHTG/exec";
-
-function hantarKeGoogleSheets(data) {
-    fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // Penting untuk mengelakkan ralat CORS
-        cache: 'no-cache',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(() => console.log("Data berjaya dihantar ke Cloud"))
-    .catch(err => console.log("Ralat Cloud: ", err));
-}
-
-function prosesPinjam() {
-    const nama = document.getElementById('p_nama').value;
-    const buku = document.getElementById('p_buku').value;
-    if(!nama || !buku) return Swal.fire('Ralat', 'Sila isi semua maklumat', 'error');
-
-    Swal.fire({
-        title: 'Perjanjian Pinjaman',
-        text: "Saya bersetuju untuk memulangkan buku ini dalam masa 7 hari.",
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        confirmButtonText: 'Setuju'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const tarikhPinjam = new Date();
-            const dataBaru = {
-                id: Date.now(),
-                nama: nama,
-                buku: buku,
-                tglPinjamStr: new Date().toLocaleDateString('ms-MY'),
-                status: 'Dalam Pinjaman'
-            };
-
-            // 1. Simpan dalam LocalStorage (untuk kegunaan offline/laju)
-            rekod.push(dataBaru);
-            localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
-
-            // 2. Hantar ke Google Sheets (Online)
-            hantarKeGoogleSheets(dataBaru);
-
-            Swal.fire('Berjaya!', 'Rekod telah disimpan secara online & offline', 'success');
-            document.getElementById('p_nama').value = '';
-            document.getElementById('p_buku').value = '';
-        }
-    })
-}
+                <button onclick="prosesPinjam()" class="w-full btn-green py-3 rounded-lg font-bold mt-4 shadow-xl text-lg">Pinjam & Simpan ke Cloud</button>
             </div>
         </section>
 
@@ -113,8 +62,7 @@ function prosesPinjam() {
 
         <section id="koleksi" class="hidden glass p-8 rounded-2xl">
             <h2 class="text-2xl font-semibold mb-6 text-blue-300 border-b border-blue-500/30 pb-2">Koleksi Buku i-Pustaka</h2>
-            <div id="grid-koleksi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                </div>
+            <div id="grid-koleksi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
         </section>
 
         <section id="admin_login" class="hidden glass p-8 rounded-2xl max-w-md mx-auto text-center">
@@ -126,23 +74,10 @@ function prosesPinjam() {
         <section id="admin_panel" class="hidden glass p-8 rounded-2xl overflow-x-auto">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
-                    <h2 class="text-2xl font-semibold text-emerald-300">Rekod Pinjaman</h2>
-                    <p class="text-xs text-slate-400 italic">Klik butang tapis untuk melihat sejarah</p>
+                    <h2 class="text-2xl font-semibold text-emerald-300">Rekod Pinjaman (Local)</h2>
+                    <p class="text-xs text-slate-400 italic">Data di bawah disimpan dalam browser ini.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center">
-                    <select id="admin_filter" onchange="filterAdminTable()" class="bg-slate-800 border border-slate-700 rounded p-2 text-sm focus:outline-none">
-                        <option value="all">Semua Rekod</option>
-                        <option value="7">7 Hari Terkini</option>
-                        <option value="14">14 Hari Terkini</option>
-                        <option value="30">30 Hari Terkini</option>
-                        <option value="180">180 Hari Terkini</option>
-                        <option value="custom">Pilihan Tarikh...</option>
-                    </select>
-                    <div id="custom_range" class="hidden flex gap-2">
-                        <input type="date" id="date_start" class="bg-slate-800 border border-slate-700 rounded p-1 text-xs">
-                        <input type="date" id="date_end" class="bg-slate-800 border border-slate-700 rounded p-1 text-xs">
-                        <button onclick="filterAdminTable()" class="bg-emerald-600 p-2 rounded text-xs">Tapis</button>
-                    </div>
                     <button onclick="logoutAdmin()" class="text-red-400 hover:text-red-300 text-sm font-bold ml-4">Log Keluar</button>
                 </div>
             </div>
@@ -166,29 +101,31 @@ function prosesPinjam() {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        // Database simulation
+        // CONFIGURATION: Masukkan URL Google Apps Script anda di sini
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziP07IrTJT6uEiB9QPrTJGxWv8QwcZOdpeTqUhJ1Lpt-lye5_RYXcnqazzIDy_W-TM/exec";
+
         let rekod = JSON.parse(localStorage.getItem('rekod_pustaka')) || [];
 
-        // Data Koleksi Buku
         const senaraiBuku = [
-            { judul: "Al Quran", penulis: "Lembaga Pentashihan Mushaf Al-Quran", tahun: "-", pub: "Pelbagai Penerbit", desc: "Kitab suci umat Islam yang mengandungi kalam Allah SWT sebagai petunjuk bagi seluruh umat manusia." },
-            { judul: "Fi Zilal An-Nawawiyah", penulis: "Imam An-Nawawi", tahun: "-", pub: "Pustaka Buku Putih", desc: "Syarahan mendalam terhadap hadis-hadis pilihan yang membentuk peribadi muslim yang rabbani." },
-            { judul: "Muntalaq", penulis: "Mohammad Ahmad Ar-Rasyid", tahun: "1990-an", pub: "Pustaka Salam (Edisi Melayu)", desc: "Sebuah kitab haraki yang membincangkan titik tolak perjuangan dan persediaan jiwa dalam dakwah." },
-            { judul: "Riyadatus Salihin", penulis: "Imam An-Nawawi", tahun: "670H", pub: "Darul Fikr", desc: "Taman orang-orang soleh; koleksi hadis sahih mengenai adab, ibadat, dan akhlak untuk diamalkan sehari-hari." }
+            { judul: "Al Quran", penulis: "Lembaga Pentashihan Mushaf Al-Quran", tahun: "-", pub: "Pelbagai Penerbit", desc: "Kitab suci umat Islam." },
+            { judul: "Fi Zilal An-Nawawiyah", penulis: "Imam An-Nawawi", tahun: "-", pub: "Pustaka Buku Putih", desc: "Syarahan hadis pilihan." },
+            { judul: "Muntalaq", penulis: "Mohammad Ahmad Ar-Rasyid", tahun: "1990-an", pub: "Pustaka Salam", desc: "Kitab perjuangan dakwah." },
+            { judul: "Riyadatus Salihin", penulis: "Imam An-Nawawi", tahun: "670H", pub: "Darul Fikr", desc: "Koleksi hadis adab dan akhlak." }
         ];
 
         for(let i=1; i<=11; i++) {
             senaraiBuku.push({
-                judul: `Tafsir Fi Zilal Quran Sayyid Qutb Jilid ${i}`,
+                judul: `Tafsir Fi Zilal Quran Jilid ${i}`,
                 penulis: "Sayyid Qutb",
                 tahun: "1952-1965",
                 pub: "Darul Syuruq",
-                desc: `Tafsir 'Di Bawah Naungan Al-Quran' Jilid ${i}. Mengupas intipati ayat Al-Quran dari sudut pandang harakah dan jiwa yang hidup.`
+                desc: `Tafsir 'Di Bawah Naungan Al-Quran' Jilid ${i}.`
             });
         }
 
+        // Papar tarikh hari ini
         const today = new Date().toLocaleDateString('ms-MY');
-        document.getElementById('currentDate').innerText = today;
+        document.getElementById('currentDateDisplay').innerText = today;
 
         function showSection(section) {
             document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
@@ -222,18 +159,27 @@ function prosesPinjam() {
             const buku = senaraiBuku.find(b => b.judul === judul);
             Swal.fire({
                 title: buku.judul,
-                html: `
-                    <div class="text-left text-sm space-y-2">
-                        <p><strong>Penulis:</strong> ${buku.penulis}</p>
-                        <p><strong>Tahun:</strong> ${buku.tahun}</p>
-                        <p><strong>Penerbit:</strong> ${buku.pub}</p>
-                        <hr class="border-slate-600 my-2">
-                        <p class="italic text-slate-300">"${buku.desc}"</p>
-                    </div>
-                `,
-                confirmButtonText: 'Tutup',
-                confirmButtonColor: '#10b981'
+                html: `<div class="text-left text-sm"><p><strong>Penulis:</strong> ${buku.penulis}</p><p class="italic mt-2">"${buku.desc}"</p></div>`,
+                confirmButtonText: 'Tutup', confirmButtonColor: '#10b981'
             });
+        }
+
+        async function hantarKeCloud(data) {
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("ISI_URL")) {
+                console.warn("URL Google Script belum diisi.");
+                return;
+            }
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+            } catch (err) {
+                console.error("Ralat Cloud:", err);
+            }
         }
 
         function prosesPinjam() {
@@ -242,31 +188,32 @@ function prosesPinjam() {
             if(!nama || !buku) return Swal.fire('Ralat', 'Sila isi semua maklumat', 'error');
 
             Swal.fire({
-                title: 'Perjanjian Pinjaman',
-                text: "Saya bersetuju untuk memulangkan buku ini dalam masa 7 hari.",
-                icon: 'info',
+                title: 'Sahkan Pinjaman',
+                text: "Data akan disimpan ke sistem.",
+                icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#10b981',
-                confirmButtonText: 'Setuju'
+                confirmButtonText: 'Ya, Pinjam'
             }).then((result) => {
                 if (result.isConfirmed) {
                     const tarikhPinjam = new Date();
-                    const tarikhSepatutnya = new Date();
-                    tarikhSepatutnya.setDate(tarikhPinjam.getDate() + 7);
-
-                    rekod.push({
+                    const dataBaru = {
                         id: Date.now(),
-                        nama, buku,
-                        tglPinjam: tarikhPinjam.toISOString(),
+                        nama: nama,
+                        buku: buku,
                         tglPinjamStr: today,
                         tglPulang: null,
-                        deadLine: tarikhSepatutnya.toISOString(),
                         status: 'Dalam Pinjaman'
-                    });
+                    };
+
+                    rekod.push(dataBaru);
                     localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
-                    Swal.fire('Berjaya!', 'Sila pulangkan sebelum ' + tarikhSepatutnya.toLocaleDateString('ms-MY'), 'success');
-                    document.getElementById('p_nama').value = '';
-                    document.getElementById('p_buku').value = '';
+                    hantarKeCloud(dataBaru);
+
+                    Swal.fire('Berjaya!', 'Buku telah direkodkan.', 'success').then(() => {
+                        document.getElementById('p_nama').value = '';
+                        document.getElementById('p_buku').value = '';
+                    });
                 }
             })
         }
@@ -289,89 +236,49 @@ function prosesPinjam() {
 
         function pulangkanBuku(id) {
             const idx = rekod.findIndex(r => r.id === id);
-            const tglSekarang = new Date();
-            rekod[idx].tglPulang = tglSekarang.toLocaleDateString('ms-MY');
-            rekod[idx].status = tglSekarang > new Date(rekod[idx].deadLine) ? 'Selesai (Lewat)' : 'Selesai';
+            rekod[idx].tglPulang = new Date().toLocaleDateString('ms-MY');
+            rekod[idx].status = 'Selesai';
+            
             localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
-            Swal.fire('Selesai', 'Buku telah dipulangkan.', 'success');
-            cariPinjaman();
+            hantarKeCloud({...rekod[idx], note: "Update Status Pemulangan"});
+
+            Swal.fire('Selesai', 'Buku telah dipulangkan. Halaman akan dimuat semula.', 'success').then(() => {
+                location.reload(); // Refresh page seperti diminta
+            });
         }
 
         function checkAdmin() {
             if(document.getElementById('admin_pass').value === "admin123") {
                 document.getElementById('admin_login').classList.add('hidden');
                 document.getElementById('admin_panel').classList.remove('hidden');
-                filterAdminTable();
+                renderAdminTable();
             } else { Swal.fire('Gagal', 'Password salah!', 'error'); }
         }
 
-        function filterAdminTable() {
-            const filter = document.getElementById('admin_filter').value;
-            const customArea = document.getElementById('custom_range');
+        function renderAdminTable() {
             const tbody = document.getElementById('admin_table_body');
             tbody.innerHTML = '';
-            
-            customArea.classList.toggle('hidden', filter !== 'custom');
-
-            let filtered = rekod;
-            const hariIni = new Date();
-
-            if(filter !== 'all' && filter !== 'custom') {
-                const limitHari = parseInt(filter);
-                filtered = rekod.filter(r => {
-                    const tgl = new Date(r.tglPinjam);
-                    const diffTime = Math.abs(hariIni - tgl);
-                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) <= limitHari;
-                });
-            } else if(filter === 'custom') {
-                const start = new Date(document.getElementById('date_start').value);
-                const end = new Date(document.getElementById('date_end').value);
-                if(!isNaN(start) && !isNaN(end)) {
-                    filtered = rekod.filter(r => {
-                        const tgl = new Date(r.tglPinjam);
-                        return tgl >= start && tgl <= end;
-                    });
-                }
-            }
-
-            filtered.reverse().forEach(r => {
-                const statusColor = r.status.includes('Lewat') ? 'text-red-400' : (r.status === 'Selesai' ? 'text-emerald-400' : 'text-yellow-400');
+            rekod.slice().reverse().forEach(r => {
+                const statusColor = r.status === 'Selesai' ? 'text-emerald-400' : 'text-yellow-400';
                 tbody.innerHTML += `
-                    <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition">
+                    <tr class="border-b border-slate-800">
                         <td class="p-3">${r.nama}</td>
                         <td class="p-3">${r.buku}</td>
-                        <td class="p-3 text-xs text-center">${r.tglPinjamStr}</td>
-                        <td class="p-3 text-xs text-center">${r.tglPulang || '-'}</td>
+                        <td class="p-3 text-center">${r.tglPinjamStr}</td>
+                        <td class="p-3 text-center">${r.tglPulang || '-'}</td>
                         <td class="p-3 font-bold ${statusColor}">${r.status}</td>
                         <td class="p-3 text-center">
-                            <button onclick="padamRekod(${r.id})" class="text-red-500 hover:text-red-400 p-2">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
+                            <button onclick="padamRekod(${r.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        // FUNGSI BARU: PADAM REKOD
         function padamRekod(id) {
-            Swal.fire({
-                title: 'Padam Rekod?',
-                text: "Data ini akan dibuang secara kekal daripada sistem.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#64748b',
-                confirmButtonText: 'Ya, Padam',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    rekod = rekod.filter(r => r.id !== id);
-                    localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
-                    filterAdminTable(); // Refresh table
-                    Swal.fire('Dipadam!', 'Rekod telah berjaya dibuang.', 'success');
-                }
-            })
+            rekod = rekod.filter(r => r.id !== id);
+            localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
+            renderAdminTable();
         }
 
         function logoutAdmin() {
@@ -381,6 +288,4 @@ function prosesPinjam() {
         }
     </script>
 </body>
-
 </html>
-
