@@ -1,292 +1,616 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="ms" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>i-Pustaka: Sistem Perpustakaan Digital (Cloud Sync)</title>
+    <title>i-Pustaka | Portal Digital Rumah Ikhwah</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-green { background-color: #10b981; transition: 0.3s; }
-        .btn-green:hover { background-color: #059669; transform: translateY(-2px); }
-        .card-buku { transition: 0.3s; cursor: pointer; }
-        .card-buku:hover { transform: scale(1.05); border-color: #10b981; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Amiri:ital@0;1&display=swap');
+
+        :root {
+            --emerald-primary: #10b981;
+            --emerald-dark: #064e3b;
+            --emerald-glow: rgba(16, 185, 129, 0.3);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-x: hidden;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* Background Handling */
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: url('https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .dark .bg-overlay { filter: brightness(0.2) contrast(1.2); }
+        .light .bg-overlay { filter: brightness(0.9) opacity(0.4); }
+
+        /* Dark Mode */
+        .dark body { background-color: #020617; color: #f1f5f9; }
+        .dark .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        
+        /* Light Mode */
+        .light body { background-color: #f8fafc; color: #0f172a; }
+        .light .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(16, 185, 129, 0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .light .text-emerald-400 { color: #059669; }
+        .light .text-slate-400 { color: #475569; }
+
+        /* Sidebar Customization */
+        .sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+        .sidebar.active { transform: translateX(0); }
+
+        /* Navigation Grid */
+        .nav-grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .nav-button {
+            padding: 20px;
+            text-align: center;
+            border-radius: 20px;
+            font-weight: 800;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .nav-button.active-emerald {
+            background-color: var(--emerald-primary) !important;
+            color: white !important;
+            box-shadow: 0 0 25px var(--emerald-glow);
+            transform: translateY(-5px);
+        }
+
+        /* SweetAlert Custom Emerald */
+        .swal-emerald-popup {
+            border-radius: 30px !important;
+            border: 2px solid var(--emerald-primary) !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
+        .dark .swal-emerald-popup { background: #0f172a !important; color: white !important; }
+
+        .arabic { font-family: 'Amiri', serif; font-size: 1.2rem; }
+
+        /* Sections Animation */
+        .section-fade {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dalil-box {
+            font-style: italic;
+            border-left: 4px solid var(--emerald-primary);
+            padding-left: 15px;
+            margin: 20px 0;
+        }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-0 overflow-x-hidden" onclick="closeSidebarOutside(event)">
 
-    <header class="text-center mb-10">
-        <h1 class="text-4xl font-bold text-emerald-400 mb-2"><i class="fas fa-book-reader mr-3"></i>i-Pustaka</h1>
-        <p class="text-slate-400">Sistem Pinjaman dan Pemulangan Digital</p>
-    </header>
+    <div class="bg-overlay"></div>
 
-    <div class="flex flex-wrap justify-center gap-4 mb-10">
-        <button onclick="showSection('pinjaman')" class="btn-green px-6 py-3 rounded-lg font-bold shadow-lg"><i class="fas fa-hand-holding-heart mr-2"></i> Pinjaman</button>
-        <button onclick="showSection('pemulangan')" class="btn-green px-6 py-3 rounded-lg font-bold shadow-lg"><i class="fas fa-undo mr-2"></i> Pemulangan</button>
-        <button onclick="showSection('koleksi')" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-bold shadow-lg transition"><i class="fas fa-layer-group mr-2"></i> Koleksi</button>
-        <button onclick="showSection('admin')" class="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-lg font-bold transition shadow-lg"><i class="fas fa-user-shield mr-2"></i> Admin</button>
-    </div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 hidden z-[90] backdrop-blur-sm"></div>
 
-    <main class="max-w-6xl mx-auto">
+    <aside id="main-sidebar" class="fixed top-0 left-0 h-full w-72 glass sidebar shadow-2xl flex flex-col p-6">
+        <div class="flex justify-between items-center mb-10">
+            <span class="font-black text-xl text-emerald-500">MENU UTAMA</span>
+            <button onclick="toggleSidebar()" class="text-2xl hover:text-emerald-500 transition"><i class="fas fa-times"></i></button>
+        </div>
+
+        <nav class="space-y-4 flex-grow">
+            <button onclick="changeTheme()" class="w-full flex items-center p-4 rounded-2xl hover:bg-emerald-500/10 transition gap-4">
+                <i class="fas fa-circle-half-stroke text-emerald-500"></i>
+                <span class="font-bold">Mod Tema</span>
+            </button>
+            <button onclick="showLanguagePopUp()" class="w-full flex items-center p-4 rounded-2xl hover:bg-emerald-500/10 transition gap-4">
+                <i class="fas fa-language text-emerald-500"></i>
+                <span class="font-bold">Pilih Bahasa</span>
+            </button>
+            <button onclick="showHelp()" class="w-full flex items-center p-4 rounded-2xl hover:bg-emerald-500/10 transition gap-4">
+                <i class="fas fa-question-circle text-emerald-500"></i>
+                <span class="font-bold">Bantuan & Maklumbalas</span>
+            </button>
+            <button onclick="showPrivacy()" class="w-full flex items-center p-4 rounded-2xl hover:bg-emerald-500/10 transition gap-4">
+                <i class="fas fa-user-shield text-emerald-500"></i>
+                <span class="font-bold">Dasar Privasi</span>
+            </button>
+        </nav>
+
+        <div class="pt-6 border-t border-slate-700/30 text-center">
+            <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Sistem Pengurusan Perpustakaan</p>
+            <div class="flex justify-center gap-4 mt-2 items-center">
+                <span class="text-xs font-black bg-emerald-500/20 text-emerald-500 px-3 py-1 rounded-full">v3.0.1 - 2026</span>
+                <span class="text-xs font-black text-slate-400">|</span>
+                <span class="text-xs font-black text-emerald-500 tracking-tighter italic">ILHAM</span>
+            </div>
+        </div>
+    </aside>
+
+    <header class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
+        <button onclick="toggleSidebar()" class="w-12 h-12 flex items-center justify-center rounded-2xl glass hover:bg-emerald-500 hover:text-white transition shadow-lg">
+            <i class="fas fa-bars-staggered text-xl"></i>
+        </button>
         
-        <section id="pinjaman" class="glass p-8 rounded-2xl shadow-2xl max-w-2xl mx-auto">
-            <h2 class="text-2xl font-semibold mb-6 text-emerald-300 border-b border-emerald-500/30 pb-2">Borang Pinjaman</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="block mb-2 text-sm text-slate-300">Nama Peminjam</label>
-                    <input type="text" id="p_nama" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 focus:outline-none focus:border-emerald-500" placeholder="Masukkan nama penuh anda">
+        <div class="text-center">
+            <div class="inline-block p-4 rounded-full bg-emerald-500/10 mb-2 shadow-inner">
+                <i class="fas fa-book-quran text-4xl text-emerald-500"></i>
+            </div>
+            <h1 class="text-4xl font-extrabold tracking-tighter">i-Pustaka</h1>
+        </div>
+
+        <div class="w-12 h-12"></div> </header>
+
+    <main class="max-w-6xl mx-auto px-4 pb-24">
+        
+        <div class="text-center mb-10">
+            <p class="text-emerald-500 font-bold tracking-[0.4em] uppercase text-[10px] mb-4">Rumah Ikhwah Digital Hub</p>
+            <p class="arabic text-2xl mb-2 text-emerald-400">وَقُل رَّبِّ زِدْنِي عِلْمًا</p>
+            <p class="text-sm opacity-70 italic">"Dan katakanlah: Wahai Tuhanku, tambahkanlah kepadaku ilmu pengetahuan." (Surah Thaha: 114)</p>
+        </div>
+
+        <div class="glass p-2 rounded-[2.5rem] mb-12 shadow-2xl">
+            <div class="nav-grid-container" id="main-nav-bar">
+                <button onclick="activateNav('pinjaman')" id="btn-pinjaman" class="nav-button bg-slate-800/50 hover:bg-emerald-500/20 active-emerald">
+                    <i class="fas fa-pen-nib text-xl"></i>
+                    <span>PINJAMAN</span>
+                </button>
+                <button onclick="activateNav('pemulangan')" id="btn-pemulangan" class="nav-button bg-slate-800/50 hover:bg-emerald-500/20">
+                    <i class="fas fa-arrow-rotate-left text-xl"></i>
+                    <span>PULANG</span>
+                </button>
+                <button onclick="activateNav('koleksi')" id="btn-koleksi" class="nav-button bg-slate-800/50 hover:bg-emerald-500/20">
+                    <i class="fas fa-clapperboard text-xl"></i>
+                    <span>KOLEKSI</span>
+                </button>
+                <button onclick="activateNav('sumbangan')" id="btn-sumbangan" class="nav-button bg-slate-800/50 hover:bg-emerald-500/20">
+                    <i class="fas fa-hand-holding-heart text-xl"></i>
+                    <span>SUMBANGAN</span>
+                </button>
+                <button onclick="activateNav('admin_panel')" id="btn-admin" class="nav-button bg-rose-900/20 hover:bg-rose-600/30 text-rose-500">
+                    <i class="fas fa-user-gear text-xl"></i>
+                    <span>ADMIN</span>
+                </button>
+            </div>
+        </div>
+
+        <section id="pinjaman" class="section-content section-fade">
+            <div class="max-w-xl mx-auto glass p-10 rounded-[3rem] text-center">
+                <h2 class="text-3xl font-black mb-2">Borang Pinjaman Ilmu</h2>
+                <p class="text-slate-400 text-sm mb-8">Niatkan menuntut ilmu kerana Allah SWT.</p>
+                
+                <div class="space-y-5">
+                    <div class="relative">
+                        <input type="text" id="p_nama" class="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-2xl p-5 outline-none focus:border-emerald-500 text-center transition font-bold" placeholder="NAMA PENUH ANDA">
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="p_buku" class="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-2xl p-5 outline-none focus:border-emerald-500 text-center transition font-bold" placeholder="TAJUK BUKU PILIHAN">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 glass rounded-2xl">
+                            <span class="text-[10px] uppercase font-black opacity-50">Tarikh Pinjam</span>
+                            <p id="t_pinjam" class="font-black text-emerald-500"></p>
+                        </div>
+                        <div class="p-4 glass rounded-2xl border-rose-500/20">
+                            <span class="text-[10px] uppercase font-black opacity-50">Wajib Pulang</span>
+                            <p id="t_kembali" class="font-black text-rose-500"></p>
+                        </div>
+                    </div>
+
+                    <button onclick="laksanaPinjam()" class="w-full bg-emerald-600 py-5 rounded-2xl font-black text-lg shadow-[0_10px_30px_rgba(16,185,129,0.3)] hover:scale-[1.02] transition-all text-white">SAHKAN PINJAMAN SEKARANG</button>
                 </div>
-                <div>
-                    <label class="block mb-2 text-sm text-slate-300">Tajuk Buku</label>
-                    <input type="text" id="p_buku" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 focus:outline-none focus:border-emerald-500" placeholder="Cari tajuk di menu Koleksi">
-                </div>
-                <div class="p-4 bg-emerald-900/20 border border-emerald-500/20 rounded-lg">
-                    <p class="text-sm text-emerald-200">Tarikh Pinjam: <span id="currentDateDisplay" class="font-bold"></span></p>
-                </div>
-                <button onclick="prosesPinjam()" class="w-full btn-green py-3 rounded-lg font-bold mt-4 shadow-xl text-lg">Pinjam & Simpan ke Cloud</button>
             </div>
         </section>
 
-        <section id="pemulangan" class="hidden glass p-8 rounded-2xl max-w-2xl mx-auto">
-            <h2 class="text-2xl font-semibold mb-6 text-emerald-300 border-b border-emerald-500/30 pb-2">Carian Pemulangan</h2>
-            <div class="flex gap-2 mb-6">
-                <input type="text" id="search_input" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-3 focus:outline-none focus:border-emerald-500" placeholder="Cari nama atau tajuk buku...">
-                <button onclick="cariPinjaman()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-lg"><i class="fas fa-search"></i></button>
-            </div>
-            <div id="search_result" class="space-y-4">
-                <p class="text-center text-slate-500 italic text-sm">Sila masukkan kata kunci untuk mencari rekod aktif.</p>
-            </div>
-        </section>
-
-        <section id="koleksi" class="hidden glass p-8 rounded-2xl">
-            <h2 class="text-2xl font-semibold mb-6 text-blue-300 border-b border-blue-500/30 pb-2">Koleksi Buku i-Pustaka</h2>
-            <div id="grid-koleksi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
-        </section>
-
-        <section id="admin_login" class="hidden glass p-8 rounded-2xl max-w-md mx-auto text-center">
-            <h2 class="text-2xl font-semibold mb-6">Log Masuk Admin</h2>
-            <input type="password" id="admin_pass" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4 text-center" placeholder="Masukkan Password">
-            <button onclick="checkAdmin()" class="w-full btn-green py-3 rounded-lg font-bold">Akses Rekod</button>
-        </section>
-
-        <section id="admin_panel" class="hidden glass p-8 rounded-2xl overflow-x-auto">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h2 class="text-2xl font-semibold text-emerald-300">Rekod Pinjaman (Local)</h2>
-                    <p class="text-xs text-slate-400 italic">Data di bawah disimpan dalam browser ini.</p>
+        <section id="pemulangan" class="section-content hidden section-fade">
+            <div class="max-w-2xl mx-auto glass p-10 rounded-[3rem] text-center">
+                <h2 class="text-3xl font-black mb-8">Rekod Pemulangan</h2>
+                <div class="dalil-box text-sm text-left mb-8">
+                    "Tunaikanlah amanah kepada orang yang mempercayaimu." (Hadis Riwayat Abu Daud)
                 </div>
-                <div class="flex flex-wrap gap-2 items-center">
-                    <button onclick="logoutAdmin()" class="text-red-400 hover:text-red-300 text-sm font-bold ml-4">Log Keluar</button>
+                <div class="relative mb-8">
+                    <input type="text" id="cari_nama" onkeyup="cariDataPinjam()" class="w-full bg-slate-900/50 border-2 border-emerald-500/20 rounded-2xl py-5 px-8 outline-none focus:border-emerald-500 text-center" placeholder="Masukkan nama untuk cari rekod...">
+                </div>
+                <div id="senarai_pemulangan" class="space-y-4"></div>
+            </div>
+        </section>
+
+        <section id="koleksi" class="section-content hidden section-fade">
+            <div class="flex flex-col items-center mb-10 text-center">
+                <h2 class="text-4xl font-black mb-4">Koleksi Digital <span id="admin_badge" class="hidden text-xs bg-rose-500 text-white px-3 py-1 rounded-full align-middle ml-2">ADMIN</span></h2>
+                <p class="text-slate-400 max-w-md">Terokai ribuan ilmu yang telah diinfaqkan oleh saudara seagama kita.</p>
+            </div>
+            <div id="grid_koleksi" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
+        </section>
+
+        <section id="sumbangan" class="section-content hidden section-fade">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-black mb-3">Infaq Kebajikan</h2>
+                <p class="arabic text-2xl text-emerald-500 mt-4">لَن تَنَالُوا الْبِرَّ حَتَّىٰ تُنفِقُوا مِمَّا تُحِبُّونَ</p>
+                <p class="text-sm opacity-70 italic mt-2">"Kamu tidak akan sesekali mencapai kebajikan sehingga kamu mendermakan sebahagian dari apa yang kamu cintai." (Surah Ali-Imran: 92)</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                <div class="glass p-12 rounded-[3.5rem] text-center border-emerald-500/20 hover:border-emerald-500 transition group">
+                    <div class="w-24 h-24 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:rotate-12 transition">
+                        <i class="fas fa-book text-4xl text-emerald-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4">Infaq Buku Fizikal</h3>
+                    <p class="text-slate-400 text-sm mb-10 leading-relaxed">Sumbangkan naskah ilmu fizikal anda untuk manfaat para jemaah dan pelajar Rumah Ikhwah.</p>
+                    <button onclick="sumbanganBuku()" class="w-full bg-emerald-600 py-4 rounded-2xl font-bold hover:shadow-lg transition text-white">MULAKAN INFAQ</button>
+                </div>
+
+                <div class="glass p-12 rounded-[3.5rem] text-center border-emerald-500/20 hover:border-emerald-500 transition group">
+                    <div class="w-24 h-24 bg-emerald-500/10 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition">
+                        <i class="fas fa-hand-holding-dollar text-4xl text-emerald-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4">Infaq Dana Ilmu</h3>
+                    <p class="text-slate-400 text-sm mb-10 leading-relaxed">Sumbangan tunai untuk tujuan penyelenggaraan fasiliti dan pembelian kitab-kitab rujukan utama.</p>
+                    <button onclick="infaqWang()" class="w-full bg-emerald-700 py-4 rounded-2xl font-bold hover:shadow-lg transition text-white">INFAQ SEKARANG</button>
                 </div>
             </div>
-            <table class="w-full text-left text-sm">
-                <thead>
-                    <tr class="border-b border-slate-700 text-emerald-400">
-                        <th class="p-3">Peminjam</th>
-                        <th class="p-3">Buku</th>
-                        <th class="p-3 text-center">Pinjam</th>
-                        <th class="p-3 text-center">Pulang</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3 text-center">Tindakan</th>
-                    </tr>
-                </thead>
-                <tbody id="admin_table_body"></tbody>
-            </table>
+        </section>
+
+        <section id="admin_panel" class="section-content hidden section-fade">
+            <div class="glass p-8 rounded-[3rem] overflow-hidden shadow-2xl">
+                <div class="flex justify-between items-center mb-10 px-4">
+                    <h2 class="text-3xl font-black text-emerald-500">LOG TRANSAKSI PUSAT</h2>
+                    <button onclick="location.reload()" class="bg-rose-600 px-6 py-2 rounded-full text-xs font-black text-white">LOGOUT ADMIN</button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-center">
+                        <thead>
+                            <tr class="text-emerald-500 text-[11px] uppercase font-black border-b-2 border-emerald-500/20">
+                                <th class="p-6">Peminjam</th>
+                                <th class="p-6">Judul Buku</th>
+                                <th class="p-6">Tarikh Pinjam</th>
+                                <th class="p-6">Tarikh Pulang</th>
+                                <th class="p-6">Status</th>
+                                <th class="p-6">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin_table" class="text-sm font-medium"></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script>
-        // CONFIGURATION: Masukkan URL Google Apps Script anda di sini
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbziP07IrTJT6uEiB9QPrTJGxWv8QwcZOdpeTqUhJ1Lpt-lye5_RYXcnqazzIDy_W-TM/exec";
-
-        let rekod = JSON.parse(localStorage.getItem('rekod_pustaka')) || [];
-
-        const senaraiBuku = [
-            { judul: "Al Quran", penulis: "Lembaga Pentashihan Mushaf Al-Quran", tahun: "-", pub: "Pelbagai Penerbit", desc: "Kitab suci umat Islam." },
-            { judul: "Fi Zilal An-Nawawiyah", penulis: "Imam An-Nawawi", tahun: "-", pub: "Pustaka Buku Putih", desc: "Syarahan hadis pilihan." },
-            { judul: "Muntalaq", penulis: "Mohammad Ahmad Ar-Rasyid", tahun: "1990-an", pub: "Pustaka Salam", desc: "Kitab perjuangan dakwah." },
-            { judul: "Riyadatus Salihin", penulis: "Imam An-Nawawi", tahun: "670H", pub: "Darul Fikr", desc: "Koleksi hadis adab dan akhlak." }
+        const API_URL = "https://script.google.com/macros/s/AKfycbziP07IrTJT6uEiB9QPrTJGxWv8QwcZOdpeTqUhJ1Lpt-lye5_RYXcnqazzIDy_W-TM/exec";
+        
+        let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [
+            { id: 1, judul: "Al-Quranul Karim", penulis: "Mushaf Madinah", img: "https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png" }
         ];
+        let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
+        let mode_admin = false;
 
-        for(let i=1; i<=11; i++) {
-            senaraiBuku.push({
-                judul: `Tafsir Fi Zilal Quran Jilid ${i}`,
-                penulis: "Sayyid Qutb",
-                tahun: "1952-1965",
-                pub: "Darul Syuruq",
-                desc: `Tafsir 'Di Bawah Naungan Al-Quran' Jilid ${i}.`
+        // Init Dates
+        const today = new Date();
+        document.getElementById('t_pinjam').innerText = today.toLocaleDateString('ms-MY');
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        document.getElementById('t_kembali').innerText = nextWeek.toLocaleDateString('ms-MY');
+
+        // Sidebar Control
+        function toggleSidebar() {
+            const sb = document.getElementById('main-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('active');
+            overlay.classList.toggle('hidden');
+        }
+
+        function closeSidebarOutside(e) {
+            const sb = document.getElementById('main-sidebar');
+            if(sb.classList.contains('active') && !sb.contains(e.target) && !e.target.closest('button')) {
+                toggleSidebar();
+            }
+        }
+
+        // Navigation Management
+        function activateNav(targetId) {
+            if(targetId === 'admin_panel' && !mode_admin) {
+                promptAdmin();
+                return;
+            }
+
+            document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+            document.getElementById(targetId).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active-emerald'));
+            document.getElementById('btn-' + (targetId === 'admin_panel' ? 'admin' : targetId)).classList.add('active-emerald');
+
+            if(targetId === 'koleksi') renderKoleksi();
+            if(targetId === 'admin_panel') renderAdminTable();
+        }
+
+        // Theme Toggle
+        function changeTheme() {
+            const html = document.documentElement;
+            if(html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+            }
+            toggleSidebar();
+        }
+
+        // Language PopUp
+        async function showLanguagePopUp() {
+            const { value: lang } = await Swal.fire({
+                title: 'PILIH BAHASA / SELECT LANGUAGE',
+                input: 'select',
+                inputOptions: { 'ms': 'Bahasa Melayu', 'en': 'English', 'ar': 'العربية' },
+                confirmButtonColor: '#10b981',
+                customClass: { popup: 'swal-emerald-popup' }
+            });
+            if(lang) Swal.fire('Berjaya', `Bahasa ditukar ke ${lang.toUpperCase()}`, 'success');
+        }
+
+        // SweetAlert Wrapper for Emerald Theme
+        function emeraldAlert(title, text, icon) {
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: icon,
+                confirmButtonColor: '#10b981',
+                customClass: { popup: 'swal-emerald-popup' }
             });
         }
 
-        // Papar tarikh hari ini
-        const today = new Date().toLocaleDateString('ms-MY');
-        document.getElementById('currentDateDisplay').innerText = today;
+        // Admin Prompt
+        async function promptAdmin() {
+            const { value: pass } = await Swal.fire({
+                title: 'Akses Pentadbir',
+                input: 'password',
+                inputPlaceholder: 'Kata Laluan',
+                confirmButtonColor: '#10b981',
+                customClass: { popup: 'swal-emerald-popup' }
+            });
 
-        function showSection(section) {
-            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-            if(section === 'admin') {
-                document.getElementById('admin_login').classList.remove('hidden');
-            } else if(section === 'koleksi') {
-                document.getElementById('koleksi').classList.remove('hidden');
-                renderKoleksi();
-            } else {
-                document.getElementById(section).classList.remove('hidden');
+            if(pass === 'admin123') {
+                mode_admin = true;
+                document.getElementById('admin_badge').classList.remove('hidden');
+                activateNav('admin_panel');
+                emeraldAlert('Akses Diberi', 'Selamat datang, Pentadbir.', 'success');
+            } else if(pass) {
+                emeraldAlert('Gagal', 'Kata laluan salah!', 'error');
+            }
+        }
+
+        // Main Functions
+        async function laksanaPinjam() {
+            const nama = document.getElementById('p_nama').value;
+            const buku = document.getElementById('p_buku').value;
+            const tglKembali = document.getElementById('t_kembali').innerText;
+
+            if(!nama || !buku) return emeraldAlert('Ralat', 'Sila lengkapkan maklumat!', 'warning');
+
+            // Pop up peringatan setuju pinjaman dalam 7 hari
+            const confirm = await Swal.fire({
+                title: 'Pengesahan Pinjaman',
+                text: `Saya berjanji akan memulangkan buku ini dalam tempoh 7 hari (Sebelum ${tglKembali}).`,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Saya Setuju',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#10b981',
+                customClass: { popup: 'swal-emerald-popup' }
+            });
+
+            if(!confirm.isConfirmed) return;
+
+            const payload = {
+                action: 'pinjam',
+                id: Date.now(),
+                nama,
+                buku,
+                tglPinjam: new Date().toLocaleDateString('ms-MY'),
+                tglKembali: tglKembali,
+                status: 'Dalam Pinjaman'
+            };
+
+            Swal.fire({ title: 'Memproses...', didOpen: () => Swal.showLoading() });
+            
+            try {
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                db_rekod.unshift(payload);
+                localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
+                emeraldAlert('Alhamdulillah', 'Pinjaman berjaya direkodkan.', 'success');
+                document.getElementById('p_nama').value = '';
+                document.getElementById('p_buku').value = '';
+            } catch (e) {
+                emeraldAlert('Ralat', 'Masalah sambungan server.', 'error');
             }
         }
 
         function renderKoleksi() {
-            const grid = document.getElementById('grid-koleksi');
-            grid.innerHTML = '';
-            senaraiBuku.forEach(b => {
-                grid.innerHTML += `
-                    <div class="glass p-4 rounded-xl border border-slate-700 card-buku" onclick="popupBuku('${b.judul}')">
-                        <div class="w-full h-40 bg-slate-800 rounded-lg mb-4 flex items-center justify-center text-emerald-500">
-                            <i class="fas fa-book fa-3x"></i>
-                        </div>
-                        <h3 class="font-bold text-sm h-10 overflow-hidden text-emerald-400">${b.judul}</h3>
-                        <p class="text-xs text-slate-400 mt-2">${b.penulis}</p>
+            const grid = document.getElementById('grid_koleksi');
+            grid.innerHTML = db_koleksi.map(b => `
+                <div class="glass p-4 rounded-3xl group relative hover:border-emerald-500 transition-all text-center">
+                    ${mode_admin ? `<button onclick="padamBuku(${b.id})" class="absolute -top-2 -right-2 w-8 h-8 bg-rose-600 rounded-full text-white z-10"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                    <div class="aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-slate-800">
+                        <img src="${b.img}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
                     </div>
-                `;
-            });
+                    <h3 class="text-xs font-black line-clamp-2 min-h-[32px]">${b.judul}</h3>
+                    <p class="text-[10px] text-emerald-500 font-bold uppercase mt-2">${b.penulis}</p>
+                    <button onclick="pilihBuku('${b.judul}')" class="w-full mt-4 bg-emerald-500/10 py-2 rounded-xl text-[10px] font-black hover:bg-emerald-500 hover:text-white transition">PINJAM</button>
+                </div>
+            `).join('');
         }
 
-        function popupBuku(judul) {
-            const buku = senaraiBuku.find(b => b.judul === judul);
-            Swal.fire({
-                title: buku.judul,
-                html: `<div class="text-left text-sm"><p><strong>Penulis:</strong> ${buku.penulis}</p><p class="italic mt-2">"${buku.desc}"</p></div>`,
-                confirmButtonText: 'Tutup', confirmButtonColor: '#10b981'
-            });
-        }
-
-        async function hantarKeCloud(data) {
-            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("ISI_URL")) {
-                console.warn("URL Google Script belum diisi.");
-                return;
-            }
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    cache: 'no-cache',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-            } catch (err) {
-                console.error("Ralat Cloud:", err);
-            }
-        }
-
-        function prosesPinjam() {
-            const nama = document.getElementById('p_nama').value;
-            const buku = document.getElementById('p_buku').value;
-            if(!nama || !buku) return Swal.fire('Ralat', 'Sila isi semua maklumat', 'error');
-
-            Swal.fire({
-                title: 'Sahkan Pinjaman',
-                text: "Data akan disimpan ke sistem.",
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#10b981',
-                confirmButtonText: 'Ya, Pinjam'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const tarikhPinjam = new Date();
-                    const dataBaru = {
-                        id: Date.now(),
-                        nama: nama,
-                        buku: buku,
-                        tglPinjamStr: today,
-                        tglPulang: null,
-                        status: 'Dalam Pinjaman'
-                    };
-
-                    rekod.push(dataBaru);
-                    localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
-                    hantarKeCloud(dataBaru);
-
-                    Swal.fire('Berjaya!', 'Buku telah direkodkan.', 'success').then(() => {
-                        document.getElementById('p_nama').value = '';
-                        document.getElementById('p_buku').value = '';
-                    });
-                }
-            })
-        }
-
-        function cariPinjaman() {
-            const query = document.getElementById('search_input').value.toLowerCase();
-            const results = rekod.filter(r => (r.nama.toLowerCase().includes(query) || r.buku.toLowerCase().includes(query)) && r.status === 'Dalam Pinjaman');
-            const container = document.getElementById('search_result');
-            container.innerHTML = results.length ? '' : '<p class="text-red-400 text-center">Tiada rekod pinjaman aktif.</p>';
-            
-            results.forEach(item => {
-                container.innerHTML += `
-                    <div class="p-4 bg-slate-800 rounded-xl border-l-4 border-emerald-500 flex justify-between items-center">
-                        <div><p class="font-bold text-emerald-400">${item.buku}</p><p class="text-xs text-slate-400">Peminjam: ${item.nama}</p></div>
-                        <button onclick="pulangkanBuku(${item.id})" class="bg-emerald-500 text-slate-900 px-4 py-2 rounded font-bold text-xs">PULANG</button>
-                    </div>
-                `;
-            });
-        }
-
-        function pulangkanBuku(id) {
-            const idx = rekod.findIndex(r => r.id === id);
-            rekod[idx].tglPulang = new Date().toLocaleDateString('ms-MY');
-            rekod[idx].status = 'Selesai';
-            
-            localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
-            hantarKeCloud({...rekod[idx], note: "Update Status Pemulangan"});
-
-            Swal.fire('Selesai', 'Buku telah dipulangkan. Halaman akan dimuat semula.', 'success').then(() => {
-                location.reload(); // Refresh page seperti diminta
-            });
-        }
-
-        function checkAdmin() {
-            if(document.getElementById('admin_pass').value === "admin123") {
-                document.getElementById('admin_login').classList.add('hidden');
-                document.getElementById('admin_panel').classList.remove('hidden');
-                renderAdminTable();
-            } else { Swal.fire('Gagal', 'Password salah!', 'error'); }
+        function pilihBuku(t) {
+            document.getElementById('p_buku').value = t;
+            activateNav('pinjaman');
         }
 
         function renderAdminTable() {
-            const tbody = document.getElementById('admin_table_body');
-            tbody.innerHTML = '';
-            rekod.slice().reverse().forEach(r => {
-                const statusColor = r.status === 'Selesai' ? 'text-emerald-400' : 'text-yellow-400';
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-800">
-                        <td class="p-3">${r.nama}</td>
-                        <td class="p-3">${r.buku}</td>
-                        <td class="p-3 text-center">${r.tglPinjamStr}</td>
-                        <td class="p-3 text-center">${r.tglPulang || '-'}</td>
-                        <td class="p-3 font-bold ${statusColor}">${r.status}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="padamRekod(${r.id})" class="text-red-500"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
+            const tbody = document.getElementById('admin_table');
+            tbody.innerHTML = db_rekod.map(r => `
+                <tr class="border-b border-slate-700/20 hover:bg-emerald-500/5 transition">
+                    <td class="p-6 font-bold">${r.nama}</td>
+                    <td class="p-6 text-xs italic">${r.buku}</td>
+                    <td class="p-6 text-xs">${r.tglPinjam}</td>
+                    <td class="p-6 text-xs text-rose-400">${r.status === 'Selesai' ? r.tglSebenarPulang : r.tglKembali}</td>
+                    <td class="p-6">
+                        <span class="px-4 py-1 rounded-full text-[10px] font-black uppercase ${r.status === 'Selesai' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-500'}">
+                            ${r.status}
+                        </span>
+                    </td>
+                    <td class="p-6">
+                        <button onclick="hapusRekod(${r.id})" class="text-rose-500 hover:scale-125 transition"><i class="fas fa-trash-can"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function infaqWang() {
+            Swal.fire({
+                title: 'Tabung Rumah Ikhwah',
+                html: `
+                    <div class="flex flex-col items-center">
+                        <div class="bg-white p-3 rounded-3xl mb-6 shadow-xl">
+                            <img src="https://i.ibb.co/N2H7dRGv/photo-2026-03-03-07-15-20.jpg" class="w-64 rounded-xl">
+                        </div>
+                        <p class="font-black text-emerald-500 text-lg">KHAIRIL RASHID AL-HAFIZ</p>
+                        <p class="text-xs opacity-60 mt-2 px-10">"Sedekah itu menghapuskan dosa sebagaimana air memadamkan api."</p>
+                        <div class="bg-emerald-500/10 p-4 rounded-2xl mt-6 w-full text-sm">
+                            Sila lampirkan resit kepada Khairil Rashid Al-Hafiz untuk rekod pengurusan.
+                        </div>
+                        <a href="https://t.me/+60123026207" target="_blank" class="mt-6 bg-[#0088cc] w-full py-4 rounded-2xl font-black flex items-center justify-center gap-3 text-white hover:bg-[#0077b5] transition shadow-lg">
+                            <i class="fab fa-telegram-plane text-xl"></i> HANTAR RESIT (TELEGRAM)
+                        </a>
+                    </div>
+                `,
+                showConfirmButton: false,
+                customClass: { popup: 'swal-emerald-popup' }
             });
         }
 
-        function padamRekod(id) {
-            rekod = rekod.filter(r => r.id !== id);
-            localStorage.setItem('rekod_pustaka', JSON.stringify(rekod));
+        async function prosesPulang(id) {
+            const idx = db_rekod.findIndex(r => r.id === id);
+            const tarikhHariIni = new Date().toLocaleDateString('ms-MY'); // Tarikh sistem
+            
+            Swal.fire({ title: 'Mengemaskini...', didOpen: () => Swal.showLoading() });
+
+            // Menggunakan tarikh hari ini sebagai tarikh pulang sebenar
+            const dataPulang = { ...db_rekod[idx], action: 'pulang', status: 'Selesai', tglSebenarPulang: tarikhHariIni };
+            
+            try {
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(dataPulang) });
+                db_rekod[idx].status = 'Selesai';
+                db_rekod[idx].tglSebenarPulang = tarikhHariIni; // Simpan tarikh sistem dalam rekod
+                localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
+                emeraldAlert('Terima Kasih', 'Buku telah dipulangkan dengan sempurna.', 'success');
+                cariDataPinjam();
+            } catch (e) {
+                emeraldAlert('Ralat', 'Gagal memproses.', 'error');
+            }
+        }
+
+        function cariDataPinjam() {
+            const q = document.getElementById('cari_nama').value.toLowerCase();
+            const filtered = db_rekod.filter(r => r.nama.toLowerCase().includes(q) && r.status !== 'Selesai');
+            const cont = document.getElementById('senarai_pemulangan');
+            
+            cont.innerHTML = filtered.map(r => `
+                <div class="p-6 glass rounded-3xl flex justify-between items-center border-l-8 border-emerald-500 hover:scale-[1.01] transition">
+                    <div class="text-left">
+                        <p class="font-black text-emerald-500">${r.buku}</p>
+                        <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">${r.nama}</p>
+                    </div>
+                    <button onclick="prosesPulang(${r.id})" class="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-2xl font-black text-xs text-white shadow-lg transition">PULANGKAN</button>
+                </div>
+            `).join('') || '<div class="py-10 opacity-30 italic">Tiada rekod pinjaman aktif ditemui.</div>';
+        }
+
+        function showHelp() {
+            emeraldAlert('Pusat Bantuan', 'Sila hubungi pustakawan bertugas di meja utama atau melalui Telegram Admin untuk sebarang masalah teknikal.', 'info');
+        }
+
+        function showPrivacy() {
+            emeraldAlert('Dasar Privasi', 'Data anda digunakan hanya untuk tujuan rekod pinjaman dalaman Rumah Ikhwah dan tidak akan dikongsi kepada pihak ketiga.', 'shield');
+        }
+
+        function hapusRekod(id) {
+            db_rekod = db_rekod.filter(r => r.id !== id);
+            localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
             renderAdminTable();
         }
 
-        function logoutAdmin() {
-            document.getElementById('admin_pass').value = '';
-            document.getElementById('admin_panel').classList.add('hidden');
-            showSection('pinjaman');
+        async function sumbanganBuku() {
+            const { value: form } = await Swal.fire({
+                title: 'Infaq Kitab / Buku',
+                html: `<input id="sw_penulis" class="swal2-input" placeholder="Nama Penulis"><input id="sw_buku" class="swal2-input" placeholder="Tajuk Buku">`,
+                confirmButtonText: 'Daftar Sumbangan',
+                confirmButtonColor: '#10b981',
+                customClass: { popup: 'swal-emerald-popup' },
+                preConfirm: () => ({ penulis: document.getElementById('sw_penulis').value, buku: document.getElementById('sw_buku').value })
+            });
+
+            if (form && form.buku) {
+                Swal.fire({ title: 'Mencari Info Kitab...', didOpen: () => Swal.showLoading() });
+                
+                let img = "https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png";
+                let pen = form.penulis || "Penulis Tidak Diketahui";
+                
+                try {
+                    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(form.buku)}`);
+                    const info = await res.json();
+                    if(info.items && info.items[0]) {
+                        const b = info.items[0].volumeInfo;
+                        img = b.imageLinks ? b.imageLinks.thumbnail.replace('http:','https:') : img;
+                        if(!form.penulis) pen = b.authors ? b.authors[0] : pen;
+                    }
+                } catch(e) { console.log("Google Books API Error"); }
+
+                const bukuBaru = { id: Date.now(), judul: form.buku, penulis: pen, img: img };
+                db_koleksi.unshift(bukuBaru);
+                localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
+                
+                emeraldAlert('Jazakallah Khairan', 'Buku telah berjaya didaftarkan dalam koleksi digital.', 'success');
+                renderKoleksi();
+            }
         }
     </script>
 </body>
 </html>
-
