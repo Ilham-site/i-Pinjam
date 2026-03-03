@@ -138,7 +138,6 @@
     </header>
 
     <main class="max-w-6xl mx-auto px-6 pb-20">
-        
         <div class="text-center mb-12">
             <p class="arabic text-2xl text-emerald-500 mb-2">اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ</p>
             <p class="text-xs italic opacity-70">"Bacalah dengan (menyebut) nama Tuhanmu yang menciptakan."</p>
@@ -257,12 +256,11 @@
                 </div>
             </div>
         </section>
-
     </main>
 
     <script>
-        const API_KOLEKSI = "https://script.google.com/macros/s/AKfycbyo2fP5BBBon1fNHR2XqP8Nco4V8nXHolp0iMHY2AlZ1bCGqbvb2bbrxcKSQ8ahrfiEPg/exec";
-        const API_REKOD = "https://script.google.com/macros/s/AKfycbziP07IrTJT6uEiB9QPrTJGxWv8QwcZOdpeTqUhJ1Lpt-lye5_RYXcnqazzIDy_W-TM/exec";
+        // URL API ANDA (Gunakan URL baru yang anda beri)
+        const API_URL = "https://script.google.com/macros/s/AKfycbzqfgOhE5Y5dI8834cGHTkb_QQRmBVqGVEXHMntw8TtIzmUmxKnftwZb6VzT4-Ha4hM/exec";
         
         let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [];
         let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
@@ -271,40 +269,26 @@
         window.onload = () => {
             updateDates();
             fetchKoleksiDariCloud();
-            fetchRekodDariCloud();
         };
 
         function updateDates() {
             const today = new Date();
             const nextWeek = new Date();
             nextWeek.setDate(today.getDate() + 7);
-            
             document.getElementById('t_pinjam').innerText = today.toLocaleDateString('ms-MY');
             document.getElementById('t_kembali').innerText = nextWeek.toLocaleDateString('ms-MY');
         }
 
         async function fetchKoleksiDariCloud() {
             try {
-                const res = await fetch(`${API_KOLEKSI}?action=getKoleksi`);
+                const res = await fetch(`${API_URL}?action=getKoleksi`);
                 const data = await res.json();
-                if(data) {
-                    db_koleksi = data.filter(b => b.judul);
+                if(data && data.length > 0) {
+                    db_koleksi = data;
                     localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
                     renderKoleksi();
                 }
             } catch (e) { renderKoleksi(); }
-        }
-
-        async function fetchRekodDariCloud() {
-            try {
-                const res = await fetch(`${API_REKOD}?action=getRekod`);
-                const data = await res.json();
-                if(data) {
-                    db_rekod = data;
-                    localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
-                    if(mode_admin) renderAdminTable();
-                }
-            } catch (e) { console.log("Cloud offline, guna local data"); }
         }
 
         function renderKoleksi() {
@@ -312,7 +296,7 @@
             grid.innerHTML = db_koleksi.map(b => `
                 <div class="glass p-4 rounded-[2rem] text-center border-2 border-transparent hover:border-emerald-500/50 transition">
                     <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden shadow-lg">
-                        <img src="${b.img}" class="w-full h-full object-cover" onerror="this.src='https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png'">
+                        <img src="${b.url_imej || 'https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png'}" class="w-full h-full object-cover">
                     </div>
                     <h3 class="text-[11px] font-black uppercase mb-1 line-clamp-2">${b.judul}</h3>
                     <p class="text-[9px] text-emerald-500 font-bold italic mb-4">${b.penulis || 'Tanpa Penulis'}</p>
@@ -321,82 +305,62 @@
             `).join('');
         }
 
-        async function laksanaPinjam() {
-            const nama = document.getElementById('p_nama').value.trim();
-            const buku = document.getElementById('p_buku').value.trim();
-            if(!nama || !buku) return emeraldAlert('Ops!', 'Sila isi nama dan tajuk buku.', 'warning');
+        async function sumbanganBuku() {
+            const { value: form } = await Swal.fire({
+                title: 'Infaq Kitab Baru',
+                html: `<input id="sw_buku" class="swal2-input" placeholder="Tajuk Buku">
+                       <input id="sw_penulis" class="swal2-input" placeholder="Penulis">`,
+                preConfirm: () => {
+                    const b = document.getElementById('sw_buku').value;
+                    if(!b) { Swal.showValidationMessage('Tajuk wajib diisi'); return false; }
+                    return { buku: b, penulis: document.getElementById('sw_penulis').value }
+                },
+                customClass: { popup: 'swal-emerald-popup' },
+                showCancelButton: true,
+                confirmButtonText: 'DAFTAR & HANTAR',
+                confirmButtonColor: '#10b981'
+            });
 
-            const payload = {
-                action: 'pinjam',
-                id: Date.now(),
-                nama: nama.toUpperCase(),
-                buku: buku.toUpperCase(),
-                tglPinjam: document.getElementById('t_pinjam').innerText,
-                tglKembali: document.getElementById('t_kembali').innerText,
-                status: 'Aktif'
-            };
-
-            Swal.fire({ title: 'Menyimpan Amanah...', didOpen: () => Swal.showLoading(), customClass: { popup: 'swal-emerald-popup' } });
-
-            try {
-                await fetch(API_REKOD, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                db_rekod.unshift(payload);
-                localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
-                emeraldAlert('Berjaya!', 'Sila pulangkan buku dalam tempoh 7 hari.', 'success');
-                document.getElementById('p_nama').value = '';
-                document.getElementById('p_buku').value = '';
-            } catch (e) { emeraldAlert('Ralat', 'Gagal menyambung ke server.', 'error'); }
-        }
-
-        function renderAdminTable() {
-            const tbody = document.getElementById('admin_table');
-            tbody.innerHTML = db_rekod.map(r => `
-                <tr class="border-b border-emerald-500/10">
-                    <td class="p-4 font-black text-emerald-500 text-[11px]">${r.nama}</td>
-                    <td class="p-4 text-[11px]"><b>${r.buku}</b></td>
-                    <td class="p-4 text-[10px]">${r.tglPinjam}</td>
-                    <td class="p-4 text-[10px] font-bold text-rose-500">${r.tglKembali}</td>
-                    <td class="p-4"><span class="px-2 py-1 ${r.status === 'Aktif' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-gray-500/10 text-gray-400'} rounded-full text-[8px] font-black uppercase">${r.status}</span></td>
-                    <td class="p-4"><button onclick="hapusRekod(${r.id})" class="text-rose-500"><i class="fas fa-trash-can"></i></button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="6" class="p-10 text-center opacity-30 italic">Tiada rekod ditemui.</td></tr>';
-        }
-
-        function cariDataPinjam() {
-            const q = document.getElementById('cari_nama').value.toLowerCase();
-            const filtered = db_rekod.filter(r => r.nama.toLowerCase().includes(q) && r.status === 'Aktif');
-            const cont = document.getElementById('senarai_pemulangan');
-            cont.innerHTML = filtered.map(r => `
-                <div class="p-6 glass rounded-2xl flex justify-between items-center border-l-4 border-emerald-500 text-left">
-                    <div>
-                        <p class="font-black text-emerald-500 uppercase">${r.buku}</p>
-                        <p class="text-[10px] opacity-60">Tarikh Wajib Pulang: ${r.tglKembali}</p>
-                    </div>
-                    <button onclick="prosesPulang(${r.id})" class="bg-emerald-600 px-6 py-3 rounded-xl font-black text-[10px] text-white">PULANGKAN</button>
-                </div>
-            `).join('') || (q.length > 2 ? '<p class="opacity-50 text-sm">Tiada rekod pinjaman aktif.</p>' : '');
-        }
-
-        async function prosesPulang(id) {
-            Swal.fire({ title: 'Mengemaskini...', didOpen: () => Swal.showLoading(), customClass: { popup: 'swal-emerald-popup' } });
-            try {
-                await fetch(API_REKOD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'pulang', id: id }) });
-                const idx = db_rekod.findIndex(r => r.id === id);
-                if(idx !== -1) db_rekod[idx].status = 'Selesai';
-                localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
+            if(form) {
+                Swal.fire({ title: 'Menghantar ke Cloud...', didOpen: () => Swal.showLoading(), customClass: { popup: 'swal-emerald-popup' } });
                 
-                // Refresh page selepas alert ditutup
-                Swal.fire({ 
-                    title: 'Alhamdulillah', 
-                    text: 'Terima kasih kerana menjaga amanah.', 
-                    icon: 'success', 
-                    confirmButtonColor: '#10b981', 
-                    customClass: { popup: 'swal-emerald-popup' } 
-                }).then(() => {
-                    location.reload();
-                });
-                
-            } catch (e) { emeraldAlert('Ralat', 'Gagal ke cloud.', 'error'); }
+                const payload = { 
+                    action: 'tambahBuku',
+                    id: Date.now(), 
+                    judul: form.buku.toUpperCase(), 
+                    penulis: (form.penulis || 'TANPA PENULIS').toUpperCase(), 
+                    img: '',
+                    status: 'Tersedia'
+                };
+
+                try {
+                    await fetch(API_URL, { 
+                        method: 'POST', 
+                        mode: 'no-cors', // Penting untuk Apps Script
+                        cache: 'no-cache',
+                        body: JSON.stringify(payload) 
+                    });
+
+                    // Update UI Lokal
+                    db_koleksi.unshift(payload);
+                    localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
+                    renderKoleksi();
+                    
+                    emeraldAlert('Syukran!', 'Rekod infaq telah disimpan ke Spreadsheet.', 'success');
+                } catch(e) { 
+                    emeraldAlert('Ralat', 'Gagal menghubungi pelayan.', 'error');
+                }
+            }
+        }
+
+        // --- Fungsi-fungsi Utiliti Lain ---
+        function activateNav(target) {
+            if(target === 'admin_panel' && !mode_admin) return promptAdmin();
+            document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
+            document.getElementById(target).classList.remove('hidden');
+            document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active-emerald'));
+            const btn = document.getElementById('btn-' + target);
+            if(btn) btn.classList.add('active-emerald');
         }
 
         async function promptAdmin() {
@@ -406,39 +370,8 @@
                 confirmButtonColor: '#10b981',
                 customClass: { popup: 'swal-emerald-popup' }
             });
-            if(pass === 'admin123') {
-                mode_admin = true;
-                activateNav('admin_panel');
-            } else if(pass) { emeraldAlert('Ralat', 'Kata laluan salah.', 'error'); }
-        }
-
-        function activateNav(target) {
-            if(target === 'admin_panel' && !mode_admin) return promptAdmin();
-            document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
-            document.getElementById(target).classList.remove('hidden');
-            document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active-emerald'));
-            const btn = document.getElementById('btn-' + target);
-            if(btn) btn.classList.add('active-emerald');
-            if(target === 'admin_panel') renderAdminTable();
-        }
-
-        async function sumbanganBuku() {
-            const { value: form } = await Swal.fire({
-                title: 'Infaq Kitab Baru',
-                html: `<input id="sw_buku" class="swal2-input" placeholder="Tajuk Buku">
-                       <input id="sw_penulis" class="swal2-input" placeholder="Penulis">`,
-                preConfirm: () => ({ buku: document.getElementById('sw_buku').value, penulis: document.getElementById('sw_penulis').value }),
-                customClass: { popup: 'swal-emerald-popup' }
-            });
-            if(form && form.buku) {
-                Swal.fire({ title: 'Mendaftarkan...', didOpen: () => Swal.showLoading() });
-                const bukuBaru = { action: 'tambahBuku', id: Date.now(), judul: form.buku.toUpperCase(), penulis: form.penulis.toUpperCase(), img: '' };
-                await fetch(API_KOLEKSI, { method: 'POST', mode: 'no-cors', body: JSON.stringify(bukuBaru) });
-                db_koleksi.unshift(bukuBaru);
-                localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
-                renderKoleksi();
-                emeraldAlert('Syukran!', 'Buku telah ditambah ke sistem.', 'success');
-            }
+            if(pass === 'admin123') { mode_admin = true; activateNav('admin_panel'); } 
+            else if(pass) { emeraldAlert('Ralat', 'Kata laluan salah.', 'error'); }
         }
 
         function infaqWang() {
@@ -453,20 +386,8 @@
             });
         }
 
-        function showFeedback() {
-            Swal.fire({
-                title: 'Maklum Balas',
-                input: 'textarea',
-                inputPlaceholder: 'Cadangan penambahbaikan...',
-                confirmButtonColor: '#10b981',
-                customClass: { popup: 'swal-emerald-popup' }
-            }).then(r => { if(r.value) emeraldAlert('Terima Kasih', 'Maklum balas telah dihantar.', 'success'); });
-        }
-
-        function refreshData() {
-            fetchKoleksiDariCloud();
-            fetchRekodDariCloud();
-            emeraldAlert('Selesai', 'Data telah diselaraskan dengan Cloud.', 'success');
+        function emeraldAlert(t, m, i) { 
+            Swal.fire({ title: t, text: m, icon: i, confirmButtonColor: '#10b981', customClass: { popup: 'swal-emerald-popup' } }); 
         }
 
         function toggleSidebar() { 
@@ -478,21 +399,14 @@
             const isDark = document.documentElement.classList.toggle('dark'); 
             document.documentElement.classList.toggle('light', !isDark); 
         }
-
-        function emeraldAlert(t, m, i) { 
-            Swal.fire({ title: t, text: m, icon: i, confirmButtonColor: '#10b981', customClass: { popup: 'swal-emerald-popup' } }); 
-        }
-
+        
         function pilihBuku(t) { 
             document.getElementById('p_buku').value = t; 
             activateNav('pinjaman'); 
         }
-
-        function hapusRekod(id) { 
-            db_rekod = db_rekod.filter(r => r.id !== id); 
-            localStorage.setItem('ik_rekod', JSON.stringify(db_rekod)); 
-            renderAdminTable(); 
-        }
     </script>
 </body>
 </html>
+</body>
+</html>
+
