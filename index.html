@@ -259,10 +259,10 @@
     </main>
 
     <script>
-        // URL API ANDA (Gunakan URL baru yang anda beri)
-        const API_URL = "https://script.google.com/macros/s/AKfycbzqfgOhE5Y5dI8834cGHTkb_QQRmBVqGVEXHMntw8TtIzmUmxKnftwZb6VzT4-Ha4hM/exec";
+        // URL API Google Apps Script (Sama untuk Post dan Get)
+        const API_URL = "https://script.google.com/macros/s/AKfycbzEdY1dwqqFdGOTxbqwRQX7bk13xxSHQJXam5GC9bx-Oqj8hZawZ-VE7N8s6AUJSocF/exec";
         
-        let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [];
+        let db_koleksi = []; // Dikosongkan daripada data asal
         let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
         let mode_admin = false;
 
@@ -279,16 +279,27 @@
             document.getElementById('t_kembali').innerText = nextWeek.toLocaleDateString('ms-MY');
         }
 
+        // FUNGSI UTAMA: Ambil data dari Spreadsheet
         async function fetchKoleksiDariCloud() {
+            const grid = document.getElementById('grid_koleksi');
+            grid.innerHTML = '<div class="col-span-full text-center p-10"><i class="fas fa-spinner fa-spin text-3xl text-emerald-500 mb-2"></i><p class="text-xs">Menarik data dari Khazanah Cloud...</p></div>';
+
             try {
-                const res = await fetch(`${API_URL}?action=getKoleksi`);
+                // Menambah timestamp untuk elak caching
+                const res = await fetch(`${API_URL}?action=getKoleksi&t=${Date.now()}`);
                 const data = await res.json();
+                
                 if(data && data.length > 0) {
                     db_koleksi = data;
                     localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
                     renderKoleksi();
+                } else {
+                    grid.innerHTML = '<p class="col-span-full text-center opacity-50 p-10 italic">Tiada koleksi ditemui dalam spreadsheet.</p>';
                 }
-            } catch (e) { renderKoleksi(); }
+            } catch (e) { 
+                console.error("Error fetching data:", e);
+                grid.innerHTML = '<p class="col-span-full text-center text-rose-500 p-10 italic">Gagal menyambung ke pangkalan data. Sila pastikan Apps Script telah di-deploy.</p>';
+            }
         }
 
         function renderKoleksi() {
@@ -296,7 +307,7 @@
             grid.innerHTML = db_koleksi.map(b => `
                 <div class="glass p-4 rounded-[2rem] text-center border-2 border-transparent hover:border-emerald-500/50 transition">
                     <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden shadow-lg">
-                        <img src="${b.url_imej || 'https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png'}" class="w-full h-full object-cover">
+                        <img src="${b.url_imej || 'https://i.ibb.co/8nn2Pd1n/Pngtree-abstract-gradient-crystal-texure-background-1391215.png'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x400?text=Tiada+Imej'">
                     </div>
                     <h3 class="text-[11px] font-black uppercase mb-1 line-clamp-2">${b.judul}</h3>
                     <p class="text-[9px] text-emerald-500 font-bold italic mb-4">${b.penulis || 'Tanpa Penulis'}</p>
@@ -336,24 +347,23 @@
                 try {
                     await fetch(API_URL, { 
                         method: 'POST', 
-                        mode: 'no-cors', // Penting untuk Apps Script
+                        mode: 'no-cors',
                         cache: 'no-cache',
                         body: JSON.stringify(payload) 
                     });
 
-                    // Update UI Lokal
-                    db_koleksi.unshift(payload);
-                    localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
-                    renderKoleksi();
+                    // Tunggu sebentar kemudian refresh koleksi
+                    setTimeout(() => {
+                        fetchKoleksiDariCloud();
+                        emeraldAlert('Syukran!', 'Rekod infaq telah dihantar ke Spreadsheet.', 'success');
+                    }, 1500);
                     
-                    emeraldAlert('Syukran!', 'Rekod infaq telah disimpan ke Spreadsheet.', 'success');
                 } catch(e) { 
                     emeraldAlert('Ralat', 'Gagal menghubungi pelayan.', 'error');
                 }
             }
         }
 
-        // --- Fungsi-fungsi Utiliti Lain ---
         function activateNav(target) {
             if(target === 'admin_panel' && !mode_admin) return promptAdmin();
             document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
@@ -361,6 +371,8 @@
             document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active-emerald'));
             const btn = document.getElementById('btn-' + target);
             if(btn) btn.classList.add('active-emerald');
+            
+            if(target === 'koleksi') fetchKoleksiDariCloud();
         }
 
         async function promptAdmin() {
@@ -404,9 +416,11 @@
             document.getElementById('p_buku').value = t; 
             activateNav('pinjaman'); 
         }
+
+        function refreshData() {
+            fetchKoleksiDariCloud();
+            emeraldAlert('Berjaya', 'Data dikemaskini daripada Spreadsheet.', 'success');
+        }
     </script>
 </body>
 </html>
-</body>
-</html>
-
