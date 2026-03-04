@@ -245,7 +245,7 @@
     </main>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbwmN1z5pltLKpb6XUaNf3xQcY3Q68s9TxI1YfjoES0xO1bX7Xl89-CYzXPDY3Kg4fHf/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbxE6pIIXaLk8zoKe0591WVWxiFV9vXdBdUc9vHpHi8IxrLXFh-tGImfuyGPuxDdZERy/exec";
         
         let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [];
         let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
@@ -312,46 +312,9 @@
             }
         }
 
-        async function sumbanganBuku() {
-            const { value: formValues } = await Swal.fire({
-                title: 'Infaq Kitab Baru',
-                html:
-                    '<input id="swal-judul" class="swal2-input" style="border-radius:15px; font-size:14px;" placeholder="Judul Kitab/Buku">' +
-                    '<input id="swal-penulis" class="swal2-input" style="border-radius:15px; font-size:14px;" placeholder="Nama Penulis">',
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Hantar Infaq',
-                confirmButtonColor: '#10b981',
-                customClass: { popup: 'swal-emerald-popup' },
-                preConfirm: () => {
-                    const judul = document.getElementById('swal-judul').value;
-                    const penulis = document.getElementById('swal-penulis').value;
-                    if (!judul || !penulis) {
-                        Swal.showValidationMessage('Mohon isi kedua-dua ruangan');
-                    }
-                    return { judul: judul, penulis: penulis };
-                }
-            });
-
-            if (formValues) {
-                Swal.fire({ title: 'Menghantar Data...', didOpen: () => Swal.showLoading(), customClass: { popup: 'swal-emerald-popup' } });
-                
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({
-                            action: 'infaqBuku',
-                            judul: formValues.judul.toUpperCase(),
-                            penulis: formValues.penulis.toUpperCase()
-                        })
-                    });
-                    emeraldAlert('Jazakallah!', 'Kitab anda telah didaftarkan dalam khazanah i-Pustaka.', 'success');
-                    setTimeout(() => fetchKoleksiDariCloud(), 2000);
-                } catch (error) {
-                    emeraldAlert('Ralat', 'Gagal menghantar data. Sila cuba lagi.', 'error');
-                }
-            }
+        // FUNGSI DIKEMASKINI: Terus ke Google Form
+        function sumbanganBuku() {
+            window.open('https://forms.gle/mnLLV6zHmJSLCPPX7', '_blank');
         }
 
         async function fetchKoleksiDariCloud() {
@@ -410,71 +373,47 @@
         }
 
         async function prosesPulang(id) {
-            Swal.fire({
-                title: 'Pengesahan Pemulangan',
-                text: 'Adakah anda telah memulangkan kitab ini ke tempat asalnya?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#10b981',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Ya, Selesai',
-                cancelButtonText: 'Batal',
-                customClass: { popup: 'swal-emerald-popup' }
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    const index = db_rekod.findIndex(r => r.id == id);
-                    const tarikhHariIni = new Date().toLocaleDateString('ms-MY');
-                    
-                    // Kemaskini Lokal
-                    db_rekod[index].status = 'SELESAI';
-                    db_rekod[index].tarikhPulang = tarikhHariIni;
-                    localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
+            const index = db_rekod.findIndex(r => r.id == id);
+            const tarikhHariIni = new Date().toLocaleDateString('ms-MY');
+            db_rekod[index].status = 'SELESAI';
+            db_rekod[index].tarikhPulang = tarikhHariIni;
+            localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
 
-                    // Kosongkan paparan carian
-                    document.getElementById('senarai_pemulangan').innerHTML = '';
-
-                    Swal.fire({ 
-                        title: 'Mengemaskini Amanah...', 
-                        didOpen: () => Swal.showLoading(), 
-                        allowOutsideClick: false,
-                        customClass: { popup: 'swal-emerald-popup' } 
-                    });
-
-                    try {
-                        // Hantar ke Spreadsheet
-                        await fetch(API_URL, { 
-                            method: 'POST', 
-                            mode: 'no-cors', 
-                            body: JSON.stringify({ 
-                                action: 'kemaskiniPulang', 
-                                id: id, 
-                                tarikhPulang: tarikhHariIni 
-                            }) 
-                        });
-                        
-                        Swal.fire({
-                            title: 'Jazakallah Khair',
-                            text: 'Rekod telah dikemaskini. Terima kasih!',
-                            icon: 'success',
-                            confirmButtonColor: '#10b981',
-                            customClass: { popup: 'swal-emerald-popup' }
-                        }).then(() => {
-                            location.reload(); // Refresh page
-                        });
-
-                    } catch (e) {
-                        Swal.fire({
-                            title: 'Tersimpan Offline',
-                            text: 'Rekod dikemaskini secara lokal. Sistem akan selaras apabila internet stabil.',
-                            icon: 'info',
-                            confirmButtonColor: '#10b981',
-                            customClass: { popup: 'swal-emerald-popup' }
-                        }).then(() => {
-                            location.reload();
-                        });
-                    }
-                }
+            Swal.fire({ 
+                title: 'Mengemaskini Amanah...', 
+                didOpen: () => Swal.showLoading(), 
+                allowOutsideClick: false,
+                customClass: { popup: 'swal-emerald-popup' } 
             });
+
+            try {
+                await fetch(API_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify({ action: 'kemaskiniPulang', id: id, tarikhPulang: tarikhHariIni }) 
+                });
+                
+                Swal.fire({
+                    title: 'Jazakallah Khair',
+                    text: 'Terima kasih kerana menjaga amanah dengan baik.',
+                    icon: 'success',
+                    confirmButtonColor: '#10b981',
+                    customClass: { popup: 'swal-emerald-popup' }
+                }).then(() => {
+                    location.reload(); 
+                });
+
+            } catch (e) {
+                Swal.fire({
+                    title: 'Tersimpan Offline',
+                    text: 'Rekod dikemaskini secara lokal. Sila hubungkan internet untuk penyelarasan.',
+                    icon: 'info',
+                    confirmButtonColor: '#10b981',
+                    customClass: { popup: 'swal-emerald-popup' }
+                }).then(() => {
+                    location.reload();
+                });
+            }
         }
 
         function renderAdminTable() {
