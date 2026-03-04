@@ -249,16 +249,20 @@
     </main>
 
     <script>
+        // URL UNTUK PINJAMAN, PULANG & ADMIN (Kekal asal)
         const API_URL = "https://script.google.com/macros/s/AKfycbxE6pIIXaLk8zoKe0591WVWxiFV9vXdBdUc9vHpHi8IxrLXFh-tGImfuyGPuxDdZERy/exec";
         
+        // URL UNTUK TEROKA / KOLEKSI (Guna URL baharu untuk sync)
+        const API_KOLEKSI_URL = "https://script.google.com/macros/s/AKfycbyOeBljN6p7C2J8Paq_fIvGwBAT_4KerRnFm5-rG7VPIzKVbkJB9FCnepkRNXdVVox3/exec";
+
         let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [];
         let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
         let mode_admin = false;
 
         window.onload = () => {
             updateDates();
-            fetchKoleksiDariCloud();
-            fetchRekodDariCloud();
+            fetchKoleksiDariCloud(); // Load koleksi dari URL baru
+            fetchRekodDariCloud();   // Load rekod dari URL asal
         };
 
         function updateDates() {
@@ -269,7 +273,7 @@
             document.getElementById('t_kembali').innerText = nextWeek.toLocaleDateString('ms-MY');
         }
 
-        // --- FUNGSI PINJAMAN ---
+        // --- FUNGSI PINJAMAN (API ASAL) ---
         async function laksanaPinjam() {
             const nama = document.getElementById('p_nama').value;
             const buku = document.getElementById('p_buku').value;
@@ -302,26 +306,30 @@
             }
         }
 
-        // --- FUNGSI KOLEKSI / TEROKA ---
+        // --- FUNGSI KOLEKSI / TEROKA (API BARU & SYNC) ---
         async function fetchKoleksiDariCloud() {
             const grid = document.getElementById('grid_koleksi');
-            grid.innerHTML = '<div class="col-span-full text-center p-10"><i class="fas fa-spinner fa-spin text-3xl text-emerald-500 mb-2"></i><p class="text-xs">Menyusun kitab...</p></div>';
+            grid.innerHTML = '<div class="col-span-full text-center p-10"><i class="fas fa-spinner fa-spin text-3xl text-emerald-500 mb-2"></i><p class="text-xs">Menyusun kitab terkini...</p></div>';
+            
             try {
-                const res = await fetch(`${API_URL}?action=getKoleksi&t=${Date.now()}`);
+                // Gunakan API_KOLEKSI_URL dengan timestamp t= untuk elak cache lama
+                const res = await fetch(`${API_KOLEKSI_URL}?action=getKoleksi&t=${Date.now()}`);
                 const data = await res.json();
+                
                 if(data && data.length > 0) {
                     db_koleksi = data;
                     localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
                     renderKoleksi(db_koleksi);
                 }
             } catch (e) { 
+                console.error("Gagal sync koleksi:", e);
                 renderKoleksi(db_koleksi); 
             }
         }
 
         function renderKoleksi(data) {
             const grid = document.getElementById('grid_koleksi');
-            if(data.length === 0) {
+            if(!data || data.length === 0) {
                 grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Tiada kitab ditemui.</p>';
                 return;
             }
@@ -340,13 +348,13 @@
         function tapisKoleksi() {
             const kataKunci = document.getElementById('cari_kitab').value.toLowerCase();
             const hasilTapis = db_koleksi.filter(b => 
-                b.judul.toLowerCase().includes(kataKunci) || 
+                (b.judul && b.judul.toLowerCase().includes(kataKunci)) || 
                 (b.penulis && b.penulis.toLowerCase().includes(kataKunci))
             );
             renderKoleksi(hasilTapis);
         }
 
-        // --- FUNGSI PEMULANGAN ---
+        // --- FUNGSI PEMULANGAN (API ASAL) ---
         function cariDataPinjam() {
             const carian = document.getElementById('cari_nama').value.toUpperCase();
             const senarai = document.getElementById('senarai_pemulangan');
@@ -385,7 +393,7 @@
             }
         }
 
-        // --- FUNGSI ADMIN ---
+        // --- FUNGSI ADMIN (API ASAL) ---
         async function fetchRekodDariCloud() {
             try {
                 const res = await fetch(`${API_URL}?action=getRekod&t=${Date.now()}`);
