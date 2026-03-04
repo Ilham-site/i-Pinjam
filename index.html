@@ -312,46 +312,9 @@
             }
         }
 
-        async function sumbanganBuku() {
-            const { value: formValues } = await Swal.fire({
-                title: 'Infaq Kitab Baru',
-                html:
-                    '<input id="swal-judul" class="swal2-input" style="border-radius:15px; font-size:14px;" placeholder="Judul Kitab/Buku">' +
-                    '<input id="swal-penulis" class="swal2-input" style="border-radius:15px; font-size:14px;" placeholder="Nama Penulis">',
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Hantar Infaq',
-                confirmButtonColor: '#10b981',
-                customClass: { popup: 'swal-emerald-popup' },
-                preConfirm: () => {
-                    const judul = document.getElementById('swal-judul').value;
-                    const penulis = document.getElementById('swal-penulis').value;
-                    if (!judul || !penulis) {
-                        Swal.showValidationMessage('Mohon isi kedua-dua ruangan');
-                    }
-                    return { judul: judul, penulis: penulis };
-                }
-            });
-
-            if (formValues) {
-                Swal.fire({ title: 'Menghantar Data...', didOpen: () => Swal.showLoading(), customClass: { popup: 'swal-emerald-popup' } });
-                
-                try {
-                    await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({
-                            action: 'infaqBuku',
-                            judul: formValues.judul.toUpperCase(),
-                            penulis: formValues.penulis.toUpperCase()
-                        })
-                    });
-                    emeraldAlert('Jazakallah!', 'Kitab anda telah didaftarkan dalam khazanah i-Pustaka.', 'success');
-                    setTimeout(() => fetchKoleksiDariCloud(), 2000);
-                } catch (error) {
-                    emeraldAlert('Ralat', 'Gagal menghantar data. Sila cuba lagi.', 'error');
-                }
-            }
+        // FUNGSI DIKEMASKINI: Terus ke Google Form
+        function sumbanganBuku() {
+            window.open('https://forms.gle/mnLLV6zHmJSLCPPX7', '_blank');
         }
 
         async function fetchKoleksiDariCloud() {
@@ -409,7 +372,6 @@
             });
         }
 
-        // FUNGSI DIKEMASKINI: Pop-up & Refresh Page
         async function prosesPulang(id) {
             const index = db_rekod.findIndex(r => r.id == id);
             const tarikhHariIni = new Date().toLocaleDateString('ms-MY');
@@ -431,7 +393,6 @@
                     body: JSON.stringify({ action: 'kemaskiniPulang', id: id, tarikhPulang: tarikhHariIni }) 
                 });
                 
-                // Pop-up Berjaya & Refresh bila klik OK
                 Swal.fire({
                     title: 'Jazakallah Khair',
                     text: 'Terima kasih kerana menjaga amanah dengan baik.',
@@ -439,7 +400,7 @@
                     confirmButtonColor: '#10b981',
                     customClass: { popup: 'swal-emerald-popup' }
                 }).then(() => {
-                    location.reload(); // Refresh halaman penuh
+                    location.reload(); 
                 });
 
             } catch (e) {
