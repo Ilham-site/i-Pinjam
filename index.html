@@ -126,7 +126,6 @@
             <h1 class="text-4xl font-black tracking-tighter text-emerald-500">i-Pustaka</h1>
             <p class="text-[9px] font-bold tracking-[0.3em] opacity-60 uppercase">Gerbang Khazanah Rumah Ikhwah</p>
         </div>
-
         <div class="w-12 h-12"></div>
     </header>
 
@@ -194,7 +193,12 @@
         <section id="koleksi" class="section-content hidden section-fade">
             <div class="text-center mb-10">
                 <h2 class="text-3xl font-black uppercase mb-2">Perpustakaan Digital</h2>
-                <p class="text-xs opacity-60">Pilih dari khazanah ilmu yang tersedia</p>
+                <p class="text-xs opacity-60 mb-6">Pilih dari khazanah ilmu yang tersedia</p>
+                
+                <div class="max-w-md mx-auto relative group">
+                    <input type="text" id="cari_kitab" onkeyup="tapisKoleksi()" class="w-full bg-emerald-500/5 border-2 border-emerald-500/20 rounded-full py-3 px-10 outline-none focus:border-emerald-500 transition text-sm" placeholder="Cari judul kitab atau nama penulis...">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 opacity-50 group-focus-within:opacity-100 transition"></i>
+                </div>
             </div>
             <div id="grid_koleksi" class="grid grid-cols-2 md:grid-cols-4 gap-6"></div>
         </section>
@@ -245,8 +249,7 @@
     </main>
 
     <script>
-        // API URL dikemaskini mengikut link yang diberikan
-        const API_URL = "https://script.google.com/macros/s/AKfycbyOeBljN6p7C2J8Paq_fIvGwBAT_4KerRnFm5-rG7VPIzKVbkJB9FCnepkRNXdVVox3/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbxE6pIIXaLk8zoKe0591WVWxiFV9vXdBdUc9vHpHi8IxrLXFh-tGImfuyGPuxDdZERy/exec";
         
         let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [];
         let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
@@ -254,7 +257,6 @@
 
         window.onload = () => {
             updateDates();
-            renderKoleksi(); // Tunjukkan data sedia ada dulu
             fetchKoleksiDariCloud();
             fetchRekodDariCloud();
         };
@@ -267,6 +269,7 @@
             document.getElementById('t_kembali').innerText = nextWeek.toLocaleDateString('ms-MY');
         }
 
+        // --- FUNGSI PINJAMAN ---
         async function laksanaPinjam() {
             const nama = document.getElementById('p_nama').value;
             const buku = document.getElementById('p_buku').value;
@@ -299,48 +302,30 @@
             }
         }
 
-        async function fetchRekodDariCloud() {
-            try {
-                const res = await fetch(`${API_URL}?action=getRekod&t=${Date.now()}`);
-                const data = await res.json();
-                if(data && data.length > 0) {
-                    db_rekod = data;
-                    localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
-                    renderAdminTable();
-                }
-            } catch (e) {
-                console.error("Gagal menarik rekod dari awan:", e);
-                renderAdminTable();
-            }
-        }
-
-        function sumbanganBuku() {
-            window.open('https://forms.gle/mnLLV6zHmJSLCPPX7', '_blank');
-        }
-
+        // --- FUNGSI KOLEKSI / TEROKA ---
         async function fetchKoleksiDariCloud() {
+            const grid = document.getElementById('grid_koleksi');
+            grid.innerHTML = '<div class="col-span-full text-center p-10"><i class="fas fa-spinner fa-spin text-3xl text-emerald-500 mb-2"></i><p class="text-xs">Menyusun kitab...</p></div>';
             try {
-                // Tambah cache busting untuk paksa data baru
-                const res = await fetch(`${API_URL}?action=getKoleksi&cache=${Date.now()}`);
+                const res = await fetch(`${API_URL}?action=getKoleksi&t=${Date.now()}`);
                 const data = await res.json();
                 if(data && data.length > 0) {
                     db_koleksi = data;
                     localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
-                    renderKoleksi();
+                    renderKoleksi(db_koleksi);
                 }
             } catch (e) { 
-                console.error("Gagal menarik koleksi:", e);
-                renderKoleksi(); 
+                renderKoleksi(db_koleksi); 
             }
         }
 
-        function renderKoleksi() {
+        function renderKoleksi(data) {
             const grid = document.getElementById('grid_koleksi');
-            if(db_koleksi.length === 0) {
-                grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Menyusun kitab...</p>';
+            if(data.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Tiada kitab ditemui.</p>';
                 return;
             }
-            grid.innerHTML = db_koleksi.map(b => `
+            grid.innerHTML = data.map(b => `
                 <div class="glass p-4 rounded-[2rem] text-center border-2 border-transparent hover:border-emerald-500/50 transition">
                     <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden shadow-lg border border-white/5">
                         <img src="${b.url_imej || 'https://i.ibb.co/6R8m6mG/book-placeholder.png'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x400?text=TIADA+GAMBAR'">
@@ -352,6 +337,16 @@
             `).join('');
         }
 
+        function tapisKoleksi() {
+            const kataKunci = document.getElementById('cari_kitab').value.toLowerCase();
+            const hasilTapis = db_koleksi.filter(b => 
+                b.judul.toLowerCase().includes(kataKunci) || 
+                (b.penulis && b.penulis.toLowerCase().includes(kataKunci))
+            );
+            renderKoleksi(hasilTapis);
+        }
+
+        // --- FUNGSI PEMULANGAN ---
         function cariDataPinjam() {
             const carian = document.getElementById('cari_nama').value.toUpperCase();
             const senarai = document.getElementById('senarai_pemulangan');
@@ -380,41 +375,27 @@
             db_rekod[index].tarikhPulang = tarikhHariIni;
             localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
 
-            Swal.fire({ 
-                title: 'Mengemaskini Amanah...', 
-                didOpen: () => Swal.showLoading(), 
-                allowOutsideClick: false,
-                customClass: { popup: 'swal-emerald-popup' } 
-            });
+            Swal.fire({ title: 'Mengemaskini Amanah...', didOpen: () => Swal.showLoading(), allowOutsideClick: false, customClass: { popup: 'swal-emerald-popup' } });
 
             try {
-                await fetch(API_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors', 
-                    body: JSON.stringify({ action: 'kemaskiniPulang', id: id, tarikhPulang: tarikhHariIni }) 
-                });
-                
-                Swal.fire({
-                    title: 'Jazakallah Khair',
-                    text: 'Terima kasih kerana menjaga amanah dengan baik.',
-                    icon: 'success',
-                    confirmButtonColor: '#10b981',
-                    customClass: { popup: 'swal-emerald-popup' }
-                }).then(() => {
-                    location.reload(); 
-                });
-
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'kemaskiniPulang', id: id, tarikhPulang: tarikhHariIni }) });
+                Swal.fire({ title: 'Jazakallah Khair', text: 'Terima kasih kerana menjaga amanah dengan baik.', icon: 'success', confirmButtonColor: '#10b981', customClass: { popup: 'swal-emerald-popup' } }).then(() => location.reload());
             } catch (e) {
-                Swal.fire({
-                    title: 'Tersimpan Offline',
-                    text: 'Rekod dikemaskini secara lokal. Sila hubungkan internet untuk penyelarasan.',
-                    icon: 'info',
-                    confirmButtonColor: '#10b981',
-                    customClass: { popup: 'swal-emerald-popup' }
-                }).then(() => {
-                    location.reload();
-                });
+                Swal.fire({ title: 'Tersimpan Offline', text: 'Rekod dikemaskini secara lokal. Sila hubungkan internet untuk penyelarasan.', icon: 'info', confirmButtonColor: '#10b981', customClass: { popup: 'swal-emerald-popup' } }).then(() => location.reload());
             }
+        }
+
+        // --- FUNGSI ADMIN ---
+        async function fetchRekodDariCloud() {
+            try {
+                const res = await fetch(`${API_URL}?action=getRekod&t=${Date.now()}`);
+                const data = await res.json();
+                if(data && data.length > 0) {
+                    db_rekod = data;
+                    localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
+                    renderAdminTable();
+                }
+            } catch (e) { renderAdminTable(); }
         }
 
         function renderAdminTable() {
@@ -448,20 +429,39 @@
             });
         }
 
+        // --- FUNGSI SUMBANGAN / INFAQ ---
+        function sumbanganBuku() {
+            window.open('https://forms.gle/mnLLV6zHmJSLCPPX7', '_blank');
+        }
+
         function infaqWang() {
             Swal.fire({
-                title: 'QR Infaq Dana Ilmu',
-                html: `<img src="https://i.ibb.co/N2H7dRGv/photo-2026-03-03-07-15-20.jpg" class="w-full rounded-2xl border-2 border-emerald-500">
-                       <p class="text-[10px] mt-4 opacity-70">Dana akan digunakan sepenuhnya untuk penyelenggaraan perpustakaan digital ini.</p>`,
-                showConfirmButton: false,
+                title: 'Infaq Dana Khazanah Ilmu',
+                html: `
+                    <div class="text-center">
+                        <img src="https://i.ibb.co/N2H7dRGv/photo-2026-03-03-07-15-20.jpg" class="w-full rounded-2xl border-2 border-emerald-500 mb-4">
+                        <div class="p-4 bg-emerald-500/10 rounded-2xl mb-4">
+                            <p class="text-sm font-bold text-emerald-500 mb-1">Bendahari Rumah Ikhwah 2026</p>
+                            <p class="text-lg font-black uppercase tracking-tight">Khairil Rashid Al-Hafiz</p>
+                        </div>
+                        <div class="space-y-3 italic text-xs opacity-80 leading-relaxed px-2">
+                            <p>"Setiap helaian kitab yang dibaca, mengalir pahalanya buat si pemberi."</p>
+                            <p>Sumbangan anda memastikan perpustakaan digital ini terus berkembang untuk manfaat ummah.</p>
+                            <p class="font-bold text-emerald-500 not-italic border-t border-emerald-500/20 pt-2">
+                                Sila hantarkan resit sumbangan ke Telegram:<br>
+                                <a href="https://t.me/+60123026207" target="_blank" class="underline">t.me/+60123026207</a>
+                            </p>
+                        </div>
+                    </div>
+                `,
+                showConfirmButton: true,
+                confirmButtonText: 'Tutup',
+                confirmButtonColor: '#10b981',
                 customClass: { popup: 'swal-emerald-popup' }
             });
         }
 
-        function showFeedback() {
-            emeraldAlert('Maklum Balas', 'Sila hantarkan sebarang aduan atau cadangan ke emel: ikhwah@library.com. Terima kasih!', 'info');
-        }
-
+        // --- FUNGSI NAVIGASI & TEMA ---
         function activateNav(target) {
             if(target === 'admin_panel' && !mode_admin) return promptAdmin();
             document.querySelectorAll('.section-content').forEach(s => s.classList.add('hidden'));
@@ -500,6 +500,10 @@
         function pilihBuku(t) { 
             document.getElementById('p_buku').value = t; 
             activateNav('pinjaman'); 
+        }
+
+        function showFeedback() {
+            emeraldAlert('Maklum Balas', 'Sila hantarkan sebarang aduan atau cadangan ke emel: ikhwah@library.com. Terima kasih!', 'info');
         }
     </script>
 </body>
