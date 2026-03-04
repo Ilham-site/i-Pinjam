@@ -245,7 +245,8 @@
     </main>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbxE6pIIXaLk8zoKe0591WVWxiFV9vXdBdUc9vHpHi8IxrLXFh-tGImfuyGPuxDdZERy/exec";
+        // API URL dikemaskini mengikut link yang diberikan
+        const API_URL = "https://script.google.com/macros/s/AKfycbyOeBljN6p7C2J8Paq_fIvGwBAT_4KerRnFm5-rG7VPIzKVbkJB9FCnepkRNXdVVox3/exec";
         
         let db_koleksi = JSON.parse(localStorage.getItem('ik_koleksi')) || [];
         let db_rekod = JSON.parse(localStorage.getItem('ik_rekod')) || [];
@@ -253,11 +254,7 @@
 
         window.onload = () => {
             updateDates();
-            // Paparkan data lokal dulu jika ada untuk kepantasan
-            if(db_koleksi.length > 0) renderKoleksi();
-            if(db_rekod.length > 0) renderAdminTable();
-            
-            // Kemudian ambil data terbaru dari cloud
+            renderKoleksi(); // Tunjukkan data sedia ada dulu
             fetchKoleksiDariCloud();
             fetchRekodDariCloud();
         };
@@ -306,7 +303,7 @@
             try {
                 const res = await fetch(`${API_URL}?action=getRekod&t=${Date.now()}`);
                 const data = await res.json();
-                if(data && Array.isArray(data)) {
+                if(data && data.length > 0) {
                     db_rekod = data;
                     localStorage.setItem('ik_rekod', JSON.stringify(db_rekod));
                     renderAdminTable();
@@ -322,46 +319,35 @@
         }
 
         async function fetchKoleksiDariCloud() {
-            const grid = document.getElementById('grid_koleksi');
-            // Hanya tunjuk spinner jika grid kosong
-            if(db_koleksi.length === 0) {
-                grid.innerHTML = '<div class="col-span-full text-center p-10"><i class="fas fa-spinner fa-spin text-3xl text-emerald-500 mb-2"></i><p class="text-xs">Menyusun kitab...</p></div>';
-            }
-            
             try {
-                const res = await fetch(`${API_URL}?action=getKoleksi&t=${Date.now()}`);
+                // Tambah cache busting untuk paksa data baru
+                const res = await fetch(`${API_URL}?action=getKoleksi&cache=${Date.now()}`);
                 const data = await res.json();
-                if(data && Array.isArray(data) && data.length > 0) {
+                if(data && data.length > 0) {
                     db_koleksi = data;
                     localStorage.setItem('ik_koleksi', JSON.stringify(db_koleksi));
                     renderKoleksi();
-                } else {
-                    if(db_koleksi.length === 0) grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Tiada kitab ditemui di awan.</p>';
                 }
             } catch (e) { 
-                console.error("Error fetching collection:", e);
-                if(db_koleksi.length > 0) renderKoleksi(); // Guna data lokal jika cloud gagal
-                else grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Gagal memuatkan data. Sila periksa internet anda.</p>';
+                console.error("Gagal menarik koleksi:", e);
+                renderKoleksi(); 
             }
         }
 
         function renderKoleksi() {
             const grid = document.getElementById('grid_koleksi');
-            if(!grid) return;
             if(db_koleksi.length === 0) {
-                grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Tiada kitab ditemui.</p>';
+                grid.innerHTML = '<p class="col-span-full text-center opacity-50 py-10">Menyusun kitab...</p>';
                 return;
             }
             grid.innerHTML = db_koleksi.map(b => `
                 <div class="glass p-4 rounded-[2rem] text-center border-2 border-transparent hover:border-emerald-500/50 transition">
                     <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden shadow-lg border border-white/5">
-                        <img src="${b.url_imej || 'https://i.ibb.co/6R8m6mG/book-placeholder.png'}" 
-                             class="w-full h-full object-cover" 
-                             onerror="this.src='https://via.placeholder.com/300x400?text=TIADA+GAMBAR'">
+                        <img src="${b.url_imej || 'https://i.ibb.co/6R8m6mG/book-placeholder.png'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x400?text=TIADA+GAMBAR'">
                     </div>
-                    <h3 class="text-[11px] font-black uppercase mb-1 line-clamp-1">${b.judul || b.Judul || 'Tajuk Tidak Diketahui'}</h3>
-                    <p class="text-[9px] opacity-60 mb-3 italic">Oleh: ${b.penulis || b.Penulis || 'Anonym'}</p>
-                    <button onclick="pilihBuku('${b.judul || b.Judul}')" class="w-full py-2 bg-emerald-500/10 rounded-xl text-[9px] font-black text-emerald-500 hover:bg-emerald-500 hover:text-white transition">PILIH KITAB</button>
+                    <h3 class="text-[11px] font-black uppercase mb-1 line-clamp-1">${b.judul}</h3>
+                    <p class="text-[9px] opacity-60 mb-3 italic">Oleh: ${b.penulis || 'Anonym'}</p>
+                    <button onclick="pilihBuku('${b.judul}')" class="w-full py-2 bg-emerald-500/10 rounded-xl text-[9px] font-black text-emerald-500 hover:bg-emerald-500 hover:text-white transition">PILIH KITAB</button>
                 </div>
             `).join('');
         }
@@ -483,9 +469,6 @@
             document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active-emerald'));
             const btn = document.getElementById('btn-' + target);
             if(btn) btn.classList.add('active-emerald');
-            
-            // Re-render jika masuk ke koleksi untuk pastikan data terpapar
-            if(target === 'koleksi') renderKoleksi();
         }
 
         async function promptAdmin() {
